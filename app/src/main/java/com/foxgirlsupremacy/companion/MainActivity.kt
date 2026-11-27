@@ -164,7 +164,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun themeForMenuColor(color: String): Int = when (color.uppercase()) {
         "#F44336" -> R.style.Theme_VTuber_Red
-        "#FF9800" -> R.style.Theme_VTuber_Orange
         "#FDD835" -> R.style.Theme_VTuber_Yellow
         "#4CAF50" -> R.style.Theme_VTuber_Green
         "#2196F3" -> R.style.Theme_VTuber_Blue
