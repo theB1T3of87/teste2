@@ -11,7 +11,7 @@ import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
 
-enum class RadialAction { PET, FEED, TALK, NORMAL, OFF, BIGGER, SMALLER }
+enum class RadialAction { PET, FEED, NORMAL, OFF, BIGGER, SMALLER }
 
 class RadialMenuView(
     context: Context,
