@@ -427,6 +427,7 @@ void LAppModel::Update()
         setParam("ParamEyeBallX", face.faceX);
         setParam("ParamEyeBallY", face.faceY);
         setParam("ParamMouthForm", face.mouthForm);
+        setParam("ParamMouthOpenY", face.mouthOpen);
     }
 
     _model->Update();

@@ -36,6 +36,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var faceTrackingSwitch: MaterialSwitch
     private lateinit var snowSwitch: MaterialSwitch
     private lateinit var modelGroup: ChipGroup
+    private lateinit var menuColorGroup: ChipGroup
     private lateinit var animContainer: LinearLayout
     private lateinit var sizeSlider: Slider
     private lateinit var sizeValue: TextView
@@ -56,7 +57,7 @@ class MainActivity : AppCompatActivity() {
     private val cameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         settings.faceTrackingEnabled = granted
         faceTrackingSwitch.isChecked = granted
-        if (!granted) Toast.makeText(this, "Permissão da câmera negada; o face tracking ficará desativado.", Toast.LENGTH_LONG).show()
+        if (!granted) Toast.makeText(this, R.string.camera_permission_denied, Toast.LENGTH_LONG).show()
         if (settings.companionEnabled && permissionsGranted()) OverlayService.start(this)
     }
 
@@ -88,6 +89,8 @@ class MainActivity : AppCompatActivity() {
         faceTrackingSwitch = findViewById(R.id.switch_face_tracking)
         snowSwitch = findViewById(R.id.switch_snow)
         modelGroup = findViewById(R.id.model_group)
+        menuColorGroup = findViewById(R.id.menu_color_group)
+        menuColorGroup = findViewById(R.id.menu_color_group)
         findViewById<MaterialButton>(R.id.button_import).setOnClickListener {
             importLauncher.launch(null)
         }
@@ -119,6 +122,7 @@ class MainActivity : AppCompatActivity() {
         sizeSlider.value = settings.scale.coerceIn(0.5f, 5.0f)
         updateSizeLabel(settings.scale)
         populateModels()
+        populateMenuColors()
         populateAnimations()
 
         companionSwitch.setOnCheckedChangeListener { _, checked ->
@@ -239,6 +243,26 @@ class MainActivity : AppCompatActivity() {
                     target.outputStream().use { output -> input.copyTo(output) }
                 }
             }
+        }
+    }
+
+    private fun populateMenuColors() {
+        val palette = listOf(
+            "Red" to "#F44336", "Orange" to "#FF9800", "Yellow" to "#FDD835",
+            "Green" to "#4CAF50", "Blue" to "#2196F3", "Cyan" to "#00BCD4",
+            "Pink" to "#E91E63", "Purple" to "#9C27B0",
+        )
+        menuColorGroup.removeAllViews()
+        for ((name, hex) in palette) {
+            val chip = Chip(this).apply {
+                text = name
+                isCheckable = true
+                chipBackgroundColor = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor(hex))
+                setTextColor(if (name == "Yellow") android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+                isChecked = settings.menuColor.equals(hex, ignoreCase = true)
+                setOnClickListener { settings.menuColor = hex; isChecked = true }
+            }
+            menuColorGroup.addView(chip)
         }
     }
 

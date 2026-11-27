@@ -36,6 +36,10 @@ class Settings(context: Context) {
         get() = prefs.getBoolean(KEY_SNOW, false)
         set(value) = prefs.edit().putBoolean(KEY_SNOW, value).apply()
 
+    var menuColor: String
+        get() = prefs.getString(KEY_MENU_COLOR, "#FF7043") ?: "#FF7043"
+        set(value) = prefs.edit().putString(KEY_MENU_COLOR, value).apply()
+
     var modelId: String
         get() = prefs.getString(KEY_MODEL, "hiyori") ?: "hiyori"
         set(value) = prefs.edit().putString(KEY_MODEL, value).apply()
@@ -72,6 +76,7 @@ class Settings(context: Context) {
         const val KEY_FACE_TRACKING = "face_tracking_enabled"
         const val KEY_SNOW = "snow_fox"
         const val KEY_MODEL = "model_id"
+        const val KEY_MENU_COLOR = "menu_color"
         const val KEY_POS_X = "pos_x"
         const val KEY_POS_Y = "pos_y"
     }

@@ -65,10 +65,10 @@ class AnimMapping(
         const val MAX_WEIGHT = 5
 
         val ACTIONS = linkedMapOf(
-            "IDLE" to "Repos",
-            "PET" to "Caresse",
-            "FEED" to "Nourrir",
-            "TALK" to "Parler",
+            "IDLE" to "Idle",
+            "PET" to "Pet",
+            "FEED" to "Feed",
+            "TALK" to "Talk",
         )
 
         fun motionKey(group: String, index: Int) = "m¦$group¦$index"

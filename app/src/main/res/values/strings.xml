@@ -1,71 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Fox Girl Supremacy</string>
-    <string name="notif_channel_name">Compagne</string>
-    <string name="notif_title">La renarde est là</string>
-    <string name="notif_text">Elle se balade par-dessus tes apps.</string>
-
-    <string name="header_subtitle">Ta compagne, par-dessus toutes tes apps.</string>
-
-    <string name="card_state_title">Présence</string>
-    <string name="switch_companion">Compagne active</string>
-    <string name="switch_companion_sub">L\'afficher par-dessus les autres apps</string>
-
-    <string name="card_appearance_title">Apparence</string>
-    <string name="label_size">Taille</string>
-    <string name="switch_snow">Renarde des neiges</string>
-    <string name="switch_snow_sub">Thème glacé, pelage blanc</string>
-    <string name="label_model">Modèle</string>
-    <string name="import_model">Importer un modèle</string>
-    <string name="import_progress">Import en cours…</string>
-    <string name="import_done">Modèle importé : %1$s</string>
-    <string name="import_invalid">Dossier invalide : aucun .model3.json trouvé</string>
-    <string name="import_failed">Échec de l\'import</string>
-
-    <string name="anim_open">Voir les animations</string>
+    <string name="notif_channel_name">Companion</string>
+    <string name="notif_title">Your fox girl is here</string>
+    <string name="notif_text">She is hanging out over your apps.</string>
+    <string name="header_subtitle">Your companion, floating above your apps.</string>
+    <string name="card_state_title">Presence</string>
+    <string name="switch_companion">Companion enabled</string>
+    <string name="switch_companion_sub">Show her over other apps</string>
+    <string name="card_appearance_title">Appearance</string>
+    <string name="label_size">Size</string>
+    <string name="switch_snow">Snow fox</string>
+    <string name="switch_snow_sub">Icy theme, white fur</string>
+    <string name="label_model">Model</string>
+    <string name="import_model">Import model</string>
+    <string name="import_progress">Importing…</string>
+    <string name="import_done">Model imported: %1$s</string>
+    <string name="import_invalid">Invalid folder: no .model3.json file found</string>
+    <string name="import_failed">Import failed</string>
+    <string name="anim_open">View animations</string>
     <string name="card_anim_title">Animations</string>
-    <string name="anim_card_hint">Touche le nom pour voir l\'anim ; assigne-la à une action (poids = fréquence).</string>
-    <string name="anim_hint">Touche une animation pour la voir sur la compagne.</string>
+    <string name="anim_card_hint">Tap a name to preview an animation; assign it to an action (weight = frequency).</string>
+    <string name="anim_hint">Tap an animation to preview it on your companion.</string>
     <string name="anim_motions">Motions</string>
     <string name="anim_expressions">Expressions</string>
-    <string name="anim_empty">Ce modèle n\'a ni motion ni expression (il respire et cligne quand même).</string>
-    <string name="anim_none">Aucun modèle sélectionné.</string>
-
-    <string name="card_behavior_title">Comportement</string>
-    <string name="switch_reactions">Réactions au toucher</string>
-    <string name="switch_reactions_sub">Elle réagit quand on la touche</string>
+    <string name="anim_empty">This model has no motions or expressions (but it can still breathe and blink).</string>
+    <string name="anim_none">No model selected.</string>
+    <string name="card_behavior_title">Behavior</string>
+    <string name="switch_reactions">Touch reactions</string>
+    <string name="switch_reactions_sub">She reacts when you touch her</string>
     <string name="switch_animations">Animations</string>
-    <string name="switch_animations_sub">Respiration au repos</string>
+    <string name="switch_animations_sub">Idle breathing</string>
     <string name="switch_face_tracking">Face tracking</string>
-    <string name="switch_face_tracking_sub">La compagne suit les mouvements de ta tête et tes yeux (caméra frontale)</string>
-    <string name="switch_wander">Déambulation</string>
-    <string name="switch_wander_sub">Elle se balade en bas de l\'écran</string>
-
-    <string name="perm_overlay">Affichage par-dessus les apps</string>
-    <string name="perm_notif">Notification</string>
-    <string name="perm_granted">accordée</string>
-    <string name="perm_missing">à accorder</string>
-
+    <string name="switch_face_tracking_sub">Your companion follows your head and eye movements (front camera)</string>
+    <string name="switch_wander">Wandering</string>
+    <string name="switch_wander_sub">She walks around near the bottom of the screen</string>
+    <string name="perm_overlay">Display over other apps</string>
+    <string name="perm_notif">Notifications</string>
+    <string name="perm_granted">granted</string>
+    <string name="perm_missing">required</string>
     <string name="notif_action_snack">🐟 Snack</string>
-
-    <string name="action_pet">Caresser</string>
-    <string name="action_feed">Nourrir</string>
-    <string name="action_talk">Parler</string>
+    <string name="action_pet">Pet</string>
+    <string name="action_feed">Feed</string>
+    <string name="action_talk">Talk</string>
     <string name="action_normal">Normal</string>
-    <string name="action_off">Éteindre</string>
-    <string name="action_bigger">Agrandir</string>
-    <string name="action_smaller">Réduire</string>
-
+    <string name="action_off">Turn off</string>
+    <string name="action_bigger">Bigger</string>
+    <string name="action_smaller">Smaller</string>
+    <string name="menu_color_title">Menu color</string>
+    <string name="camera_permission_denied">Camera permission denied; face tracking is disabled.</string>
     <string-array name="chat_lines">
-        <item>Coucou !</item>
-        <item>Tu fais quoi ?</item>
-        <item>J\'ai un peu faim…</item>
-        <item>Caresse ?</item>
-        <item>Hehe~</item>
-        <item>Je veille sur toi.</item>
-        <item>On joue ?</item>
-        <item>Tu m\'as manqué.</item>
-        <item>*remue la queue*</item>
-        <item>Encore là, toi ?</item>
+        <item>Hey there!</item><item>What are you up to?</item><item>I'm a little hungry…</item><item>Pet me?</item><item>Hehe~</item><item>I'm watching over you.</item><item>Wanna play?</item><item>I missed you.</item><item>*wags her tail*</item><item>You're still here?</item>
     </string-array>
 </resources>

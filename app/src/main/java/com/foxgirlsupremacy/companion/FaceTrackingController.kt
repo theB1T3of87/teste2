@@ -15,6 +15,7 @@ import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import com.google.mlkit.vision.face.FaceContour
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -30,6 +31,7 @@ class FaceTrackingController(
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
             .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
             .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+            .setContourMode(FaceDetectorOptions.CONTOUR_MODE_ALL)
             .enableTracking()
             .setMinFaceSize(0.12f)
             .build(),
@@ -108,6 +110,7 @@ class FaceTrackingController(
             eyeLOpen = lerp(previous.eyeLOpen, data.eyeLOpen, 0.65f),
             eyeROpen = lerp(previous.eyeROpen, data.eyeROpen, 0.65f),
             mouthForm = lerp(previous.mouthForm, data.mouthForm, 0.35f),
+            mouthOpen = lerp(previous.mouthOpen, data.mouthOpen, 0.55f),
             faceX = lerp(previous.faceX, data.faceX, 0.35f),
             faceY = lerp(previous.faceY, data.faceY, 0.35f),
         )
@@ -122,6 +125,14 @@ class FaceTrackingController(
         val box = boundingBox
         val centerX = ((box.centerX() / frameWidth.toFloat()) * 2f - 1f).coerceIn(-1f, 1f)
         val centerY = (1f - (box.centerY() / frameHeight.toFloat()) * 2f).coerceIn(-1f, 1f)
+        val upperLip = getContour(FaceContour.UPPER_LIP_BOTTOM)?.points.orEmpty()
+        val lowerLip = getContour(FaceContour.LOWER_LIP_TOP)?.points.orEmpty()
+        val upperY = upperLip.map { it.y }.average()
+        val lowerY = lowerLip.map { it.y }.average()
+        val mouthGap = if (upperLip.isNotEmpty() && lowerLip.isNotEmpty() && upperY.isFinite() && lowerY.isFinite()) {
+            (lowerY - upperY).coerceAtLeast(0.0).toFloat()
+        } else 0f
+        val mouthOpen = (mouthGap / box.height().coerceAtLeast(1) * 22f).coerceIn(0f, 1f)
         return FaceTrackingData(
             angleX = (-headEulerAngleY).coerceIn(-30f, 30f),
             angleY = (-headEulerAngleX).coerceIn(-25f, 25f),
@@ -129,6 +140,7 @@ class FaceTrackingController(
             eyeLOpen = leftEyeOpenProbability ?: 0.8f,
             eyeROpen = rightEyeOpenProbability ?: 0.8f,
             mouthForm = (smilingProbability ?: 0f).coerceIn(0f, 1f),
+            mouthOpen = mouthOpen,
             faceX = centerX,
             faceY = centerY,
         )
@@ -142,6 +154,7 @@ data class FaceTrackingData(
     val eyeLOpen: Float,
     val eyeROpen: Float,
     val mouthForm: Float,
+    val mouthOpen: Float,
     val faceX: Float,
     val faceY: Float,
 )

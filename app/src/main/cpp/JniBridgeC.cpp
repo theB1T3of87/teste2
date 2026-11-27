@@ -24,7 +24,7 @@ static jmethodID g_LoadFileMethodId;
 static jmethodID g_MoveTaskToBackMethodId;
 static jmethodID g_GetModelDirectoryMethodId;
 static jmethodID g_GetModelJsonFileMethodId;
-static JniBridgeC::FaceTrackingData g_faceTracking = {false, 0, 0, 0, 1, 1, 0, 0, 0};
+static JniBridgeC::FaceTrackingData g_faceTracking = {false, 0, 0, 0, 1, 1, 0, 0, 0, 0};
 static std::mutex g_faceTrackingMutex;
 
 JNIEnv* GetEnv()
@@ -201,12 +201,12 @@ extern "C"
 
     JNIEXPORT void JNICALL
     Java_com_foxgirlsupremacy_companion_NativeCubismBridge_nativeSetFaceTrackingData(JNIEnv *env, jclass type, jboolean enabled,
-        jfloat angleX, jfloat angleY, jfloat angleZ, jfloat eyeLOpen, jfloat eyeROpen, jfloat mouthForm, jfloat faceX, jfloat faceY)
+        jfloat angleX, jfloat angleY, jfloat angleZ, jfloat eyeLOpen, jfloat eyeROpen, jfloat mouthForm, jfloat mouthOpen, jfloat faceX, jfloat faceY)
     {
         std::lock_guard<std::mutex> lock(g_faceTrackingMutex);
         g_faceTracking.enabled = enabled == JNI_TRUE;
         g_faceTracking.angleX = angleX; g_faceTracking.angleY = angleY; g_faceTracking.angleZ = angleZ;
-        g_faceTracking.eyeLOpen = eyeLOpen; g_faceTracking.eyeROpen = eyeROpen; g_faceTracking.mouthForm = mouthForm;
+        g_faceTracking.eyeLOpen = eyeLOpen; g_faceTracking.eyeROpen = eyeROpen; g_faceTracking.mouthForm = mouthForm; g_faceTracking.mouthOpen = mouthOpen;
         g_faceTracking.faceX = faceX; g_faceTracking.faceY = faceY;
     }
 
