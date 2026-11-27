@@ -34,7 +34,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var reactionsSwitch: MaterialSwitch
     private lateinit var wanderSwitch: MaterialSwitch
     private lateinit var faceTrackingSwitch: MaterialSwitch
-    private lateinit var snowSwitch: MaterialSwitch
     private lateinit var modelGroup: ChipGroup
     private lateinit var menuColorGroup: ChipGroup
     private lateinit var animContainer: LinearLayout
@@ -69,10 +68,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         settings = Settings(this)
 
-        setTheme(
-            if (settings.snowFox) R.style.Theme_FoxGirlSupremacy_Snow
-            else R.style.Theme_FoxGirlSupremacy,
-        )
+        setTheme(themeForMenuColor(settings.menuColor))
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -87,9 +83,7 @@ class MainActivity : AppCompatActivity() {
         reactionsSwitch = findViewById(R.id.switch_reactions)
         wanderSwitch = findViewById(R.id.switch_wander)
         faceTrackingSwitch = findViewById(R.id.switch_face_tracking)
-        snowSwitch = findViewById(R.id.switch_snow)
         modelGroup = findViewById(R.id.model_group)
-        menuColorGroup = findViewById(R.id.menu_color_group)
         menuColorGroup = findViewById(R.id.menu_color_group)
         findViewById<MaterialButton>(R.id.button_import).setOnClickListener {
             importLauncher.launch(null)
@@ -118,7 +112,6 @@ class MainActivity : AppCompatActivity() {
         reactionsSwitch.isChecked = settings.reactionsEnabled
         wanderSwitch.isChecked = settings.wanderEnabled
         faceTrackingSwitch.isChecked = settings.faceTrackingEnabled
-        snowSwitch.isChecked = settings.snowFox
         sizeSlider.value = settings.scale.coerceIn(0.5f, 5.0f)
         updateSizeLabel(settings.scale)
         populateModels()
@@ -151,12 +144,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        snowSwitch.setOnCheckedChangeListener { _, checked ->
-            settings.snowFox = checked
-
-            recreate()
-        }
-
         modelGroup.setOnCheckedStateChangeListener { group, checkedIds ->
             val checkedId = checkedIds.firstOrNull() ?: return@setOnCheckedStateChangeListener
             val modelId = group.findViewById<Chip>(checkedId)?.tag as? String ?: return@setOnCheckedStateChangeListener
@@ -175,17 +162,29 @@ class MainActivity : AppCompatActivity() {
         grantButton.setOnClickListener { requestMissingPermissions() }
     }
 
+    private fun themeForMenuColor(color: String): Int = when (color.uppercase()) {
+        "#F44336" -> R.style.Theme_VTuber_Red
+        "#FF9800" -> R.style.Theme_VTuber_Orange
+        "#FDD835" -> R.style.Theme_VTuber_Yellow
+        "#4CAF50" -> R.style.Theme_VTuber_Green
+        "#2196F3" -> R.style.Theme_VTuber_Blue
+        "#00BCD4" -> R.style.Theme_VTuber_Cyan
+        "#E91E63" -> R.style.Theme_VTuber_Pink
+        "#9C27B0" -> R.style.Theme_VTuber_Purple
+        else -> R.style.Theme_VTuber
+    }
+
     private fun updateSizeLabel(scale: Float) {
         sizeValue.text = "${(scale * 100).toInt()} %"
     }
 
     private fun importModel(treeUri: Uri) {
         val tree = DocumentFile.fromTreeUri(this, treeUri) ?: return
-        val id = (tree.name ?: "modele")
+        val id = (tree.name ?: "model")
             .lowercase()
             .replace(Regex("[^a-z0-9_]+"), "_")
             .trim('_')
-            .ifEmpty { "modele" }
+            .ifEmpty { "model" }
 
         val importBtn = findViewById<MaterialButton>(R.id.button_import)
         importBtn.isEnabled = false
@@ -260,7 +259,7 @@ class MainActivity : AppCompatActivity() {
                 chipBackgroundColor = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor(hex))
                 setTextColor(if (name == "Yellow") android.graphics.Color.BLACK else android.graphics.Color.WHITE)
                 isChecked = settings.menuColor.equals(hex, ignoreCase = true)
-                setOnClickListener { settings.menuColor = hex; isChecked = true }
+                setOnClickListener { if (!settings.menuColor.equals(hex, true)) { settings.menuColor = hex; recreate() } }
             }
             menuColorGroup.addView(chip)
         }
