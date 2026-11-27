@@ -45,11 +45,11 @@ class Live2DRenderer(
 
     fun setFaceTrackingData(data: FaceTrackingData?) {
         if (data == null) {
-            NativeCubismBridge.nativeSetFaceTrackingData(false, 0f, 0f, 0f, 1f, 1f, 0f, 0f, 0f)
+            NativeCubismBridge.nativeSetFaceTrackingData(false, 0f, 0f, 0f, 1f, 1f, 0f, 0f, 0f, 0f)
         } else {
             NativeCubismBridge.nativeSetFaceTrackingData(
                 true, data.angleX, data.angleY, data.angleZ,
-                data.eyeLOpen, data.eyeROpen, data.mouthForm, data.faceX, data.faceY,
+                data.eyeLOpen, data.eyeROpen, data.mouthForm, data.mouthOpen, data.faceX, data.faceY,
             )
         }
     }
