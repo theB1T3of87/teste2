@@ -660,7 +660,6 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
         super.onDestroy()
     }
 
-    override fun onBind(intent: Intent?): IBinder? = super.onBind(intent)
 
     companion object {
         private const val CHANNEL_ID = "companion_overlay"
