@@ -35,7 +35,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var wanderSwitch: MaterialSwitch
     private lateinit var faceTrackingSwitch: MaterialSwitch
     private lateinit var snowSwitch: MaterialSwitch
-    private lateinit var modelGroup: ChipGroup\n    private lateinit var menuColorGroup: ChipGroup
+    private lateinit var modelGroup: ChipGroup
+    private lateinit var menuColorGroup: ChipGroup
     private lateinit var animContainer: LinearLayout
     private lateinit var sizeSlider: Slider
     private lateinit var sizeValue: TextView
@@ -87,7 +88,9 @@ class MainActivity : AppCompatActivity() {
         wanderSwitch = findViewById(R.id.switch_wander)
         faceTrackingSwitch = findViewById(R.id.switch_face_tracking)
         snowSwitch = findViewById(R.id.switch_snow)
-        modelGroup = findViewById(R.id.model_group)\n        menuColorGroup = findViewById(R.id.menu_color_group)
+        modelGroup = findViewById(R.id.model_group)
+        menuColorGroup = findViewById(R.id.menu_color_group)
+        menuColorGroup = findViewById(R.id.menu_color_group)
         findViewById<MaterialButton>(R.id.button_import).setOnClickListener {
             importLauncher.launch(null)
         }
@@ -119,6 +122,7 @@ class MainActivity : AppCompatActivity() {
         sizeSlider.value = settings.scale.coerceIn(0.5f, 5.0f)
         updateSizeLabel(settings.scale)
         populateModels()
+        populateMenuColors()
         populateAnimations()
 
         companionSwitch.setOnCheckedChangeListener { _, checked ->
@@ -242,7 +246,47 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun populateMenuColors() {\n        val palette = listOf(\n            "Red" to "#F44336", "Orange" to "#FF9800", "Yellow" to "#FDD835",\n            "Green" to "#4CAF50", "Blue" to "#2196F3", "Cyan" to "#00BCD4",\n            "Pink" to "#E91E63", "Purple" to "#9C27B0",\n        )\n        menuColorGroup.removeAllViews()\n        for ((name, hex) in palette) {\n            val chip = Chip(this).apply {\n                text = name\n                isCheckable = true\n                chipBackgroundColor = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor(hex))\n                setTextColor(if (name == "Yellow") android.graphics.Color.BLACK else android.graphics.Color.WHITE)\n                isChecked = settings.menuColor.equals(hex, ignoreCase = true)\n                setOnClickListener { settings.menuColor = hex; isChecked = true }\n            }\n            menuColorGroup.addView(chip)\n        }\n    }\n\n    private fun populateAnimations() {
+    private fun populateMenuColors() {
+        val palette = listOf(
+            "Red" to "#F44336", "Orange" to "#FF9800", "Yellow" to "#FDD835",
+            "Green" to "#4CAF50", "Blue" to "#2196F3", "Cyan" to "#00BCD4",
+            "Pink" to "#E91E63", "Purple" to "#9C27B0",
+        )
+        menuColorGroup.removeAllViews()
+        for ((name, hex) in palette) {
+            val chip = Chip(this).apply {
+                text = name
+                isCheckable = true
+                chipBackgroundColor = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor(hex))
+                setTextColor(if (name == "Yellow") android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+                isChecked = settings.menuColor.equals(hex, ignoreCase = true)
+                setOnClickListener { settings.menuColor = hex; isChecked = true }
+            }
+            menuColorGroup.addView(chip)
+        }
+    }
+
+    private fun populateMenuColors() {
+        val palette = listOf(
+            "Red" to "#F44336", "Orange" to "#FF9800", "Yellow" to "#FDD835",
+            "Green" to "#4CAF50", "Blue" to "#2196F3", "Cyan" to "#00BCD4",
+            "Pink" to "#E91E63", "Purple" to "#9C27B0",
+        )
+        menuColorGroup.removeAllViews()
+        for ((name, hex) in palette) {
+            val chip = Chip(this).apply {
+                text = name
+                isCheckable = true
+                chipBackgroundColor = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor(hex))
+                setTextColor(if (name == "Yellow") android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+                isChecked = settings.menuColor.equals(hex, ignoreCase = true)
+                setOnClickListener { settings.menuColor = hex; isChecked = true }
+            }
+            menuColorGroup.addView(chip)
+        }
+    }
+
+    private fun populateAnimations() {
         animContainer.removeAllViews()
         val entry = Live2DModels.resolve(this, settings.modelId) ?: return
         val inv = Live2DModels.inventory(this, entry)
