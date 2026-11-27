@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22.1)
 project(FoxGirlSupremacyNative)
 
 set(APP_NAME FoxCubism)
-set(SDK_ROOT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../CubismSdkForNative-5-r.5)
+set(SDK_ROOT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../FoxGirlSupremacy/CubismSdkForNative-5-r.5)
 set(CORE_PATH ${SDK_ROOT_PATH}/Core)
 set(FRAMEWORK_PATH ${SDK_ROOT_PATH}/Framework)
 set(COMMON_SRC_PATH ${SDK_ROOT_PATH}/Samples/Common)
