@@ -25,4 +25,4 @@ include(":app")
 // Module Cubism Framework du SDK Live2D (inclus depuis le dossier du SDK).
 include(":cubismFramework")
 project(":cubismFramework").projectDir =
-    file("CubismSdkForJava-5-r.5/Framework/framework")
+    file("cubismFramework")
