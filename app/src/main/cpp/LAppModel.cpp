@@ -412,11 +412,20 @@ void LAppModel::Update()
     if (face.enabled && _model != NULL)
     {
         CubismIdManager* ids = CubismFramework::GetIdManager();
-        const auto setParam = [this, ids](const char* id, csmFloat32 value)
+        static unsigned int faceDiagnosticFrame = 0;
+        const bool logFaceFrame = (++faceDiagnosticFrame % 60) == 1;
+        const auto setParam = [this, ids, logFaceFrame](const char* id, csmFloat32 value)
         {
             CubismIdHandle handle = ids->GetId(id);
             const csmInt32 index = _model->GetParameterIndex(handle);
-            if (index >= 0) _model->SetParameterValue(index, value);
+            if (index >= 0)
+            {
+                _model->SetParameterValue(index, value);
+            }
+            else if (logFaceFrame)
+            {
+                LAppPal::PrintLogLn("[FaceTracking Cubism] model has no parameter '%s'", id);
+            }
         };
         setParam("ParamAngleX", face.angleX);
         setParam("ParamAngleY", face.angleY);
@@ -428,6 +437,16 @@ void LAppModel::Update()
         setParam("ParamEyeBallY", face.gazeY);
         setParam("ParamMouthForm", face.mouthForm);
         setParam("ParamMouthOpenY", face.mouthOpen);
+
+        if (logFaceFrame)
+        {
+            LAppPal::PrintLogLn("[FaceTracking Cubism] received angle=(%.2f,%.2f,%.2f) gaze=(%.2f,%.2f) eyes=(%.2f,%.2f) mouth=(%.2f,%.2f) indices=(%d,%d,%d)",
+                face.angleX, face.angleY, face.angleZ, face.gazeX, face.gazeY,
+                face.eyeLOpen, face.eyeROpen, face.mouthForm, face.mouthOpen,
+                _model->GetParameterIndex(ids->GetId("ParamAngleX")),
+                _model->GetParameterIndex(ids->GetId("ParamAngleY")),
+                _model->GetParameterIndex(ids->GetId("ParamAngleZ")));
+        }
     }
 
     _model->Update();
