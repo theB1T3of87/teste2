@@ -184,6 +184,7 @@ private:
     const Csm::CubismId* _idParamEyeBallX; ///< パラメータID: ParamEyeBallX
     const Csm::CubismId* _idParamEyeBallY; ///< パラメータID: ParamEyeBallXY
     Csm::csmBool _motionUpdated; ///< モーション更新フラグ
+    Csm::csmBool _faceTrackingActive; ///< Face tracking owns the head pose while enabled
 
     Csm::Rendering::CubismRenderTarget_OpenGLES2  _renderBuffer;   ///< フレームバッファ以外の描画先
 };
