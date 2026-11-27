@@ -18,6 +18,7 @@ class RadialMenuView(
     private val centerX: Float,
     private val centerY: Float,
     private val items: List<Item>,
+    menuColor: Int,
 ) : View(context) {
 
     data class Item(val action: RadialAction, val label: String, val iconRes: Int)
@@ -39,7 +40,11 @@ class RadialMenuView(
         textSize = 13 * density
     }
 
-    private fun lighten(color: Int): Int = Color.rgb(\n        (Color.red(color) + 255) / 2, (Color.green(color) + 255) / 2, (Color.blue(color) + 255) / 2,\n    )\n\n    private fun itemCenter(index: Int): PointF {
+    private fun lighten(color: Int): Int = Color.rgb(
+        (Color.red(color) + 255) / 2, (Color.green(color) + 255) / 2, (Color.blue(color) + 255) / 2,
+    )
+
+    private fun itemCenter(index: Int): PointF {
         getLocationOnScreen(loc)
         val localCenterX = centerX - loc[0]
         val localCenterY = centerY - loc[1]
