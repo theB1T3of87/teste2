@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.framework.image.MPImage
+import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
@@ -49,6 +50,9 @@ class FaceTrackingController(
     @Volatile private var lastFaceAtMs = 0L
     // Reference pose captured from the first valid face frame; tracking is relative to it.
     @Volatile private var neutralHeadRotation: FloatArray? = null
+    @Volatile private var neutralLandmarkRotation: FloatArray? = null
+    @Volatile private var inputFrameWidth = 640
+    @Volatile private var inputFrameHeight = 480
     private var lastPoseLogAtMs = 0L
     private var lastTimestampMs = 0L
 
@@ -143,6 +147,8 @@ class FaceTrackingController(
         var mpImage: MPImage? = null
         try {
             val bitmap = proxy.toUprightBitmap()
+            inputFrameWidth = bitmap.width
+            inputFrameHeight = bitmap.height
             mpImage = BitmapImageBuilder(bitmap).build()
             val now = SystemClock.uptimeMillis()
             val timestamp = maxOf(now, lastTimestampMs + 1L)
@@ -179,6 +185,7 @@ class FaceTrackingController(
         smoothedTrackingData = null
         lastFaceAtMs = 0L
         neutralHeadRotation = null
+        neutralLandmarkRotation = null
         onTracking(null)
     }
 
@@ -276,16 +283,23 @@ class FaceTrackingController(
         val scores = categories.associate { it.categoryName() to it.score() }
         fun score(name: String): Float = (scores[name] ?: 0f).coerceIn(0f, 1f)
 
+        val landmarks = detectedFaces.first()
         val matrices = facialTransformationMatrixes().orElse(emptyList())
         val matrix = matrices.firstOrNull()
-        val (angleX, angleY, angleZ) = matrix?.toHeadAngles() ?: Triple(0f, 0f, 0f)
+        val matrixAngles = matrix?.toHeadAngles()
+        // The 4x4 pose matrix is the preferred signal. If the optional matrix is
+        // absent/invalid, build a face-local 3D basis from stable mesh landmarks.
+        val landmarkAngles = if (matrixAngles == null) landmarks.toHeadAnglesFromLandmarks() else null
+        val (angleX, angleY, angleZ) = matrixAngles ?: landmarkAngles ?: Triple(0f, 0f, 0f)
+        val poseSource = when {
+            matrixAngles != null -> "matrix"
+            landmarkAngles != null -> "landmarks-fallback"
+            else -> "none"
+        }
         val now = SystemClock.uptimeMillis()
         if (now - lastPoseLogAtMs >= DIAGNOSTIC_LOG_INTERVAL_MS) {
-            if (matrix == null) {
-                Log.e(TAG, "Face detected but pose matrix is MISSING; faces=${detectedFaces.size}, landmarks=${detectedFaces.first().size}, blendshapes=${categories.size}")
-            } else {
-                Log.i(TAG, "MediaPipe pose: matrixSize=${matrix.size}, raw=${matrix.contentToString()}, angles=($angleX,$angleY,$angleZ), blendshapes=${categories.size}")
-            }
+            Log.i(TAG, "MediaPipe pose source=$poseSource, matrixSize=${matrix?.size ?: 0}, angles=($angleX,$angleY,$angleZ), landmarks=${landmarks.size}, blendshapes=${categories.size}")
+            if (matrix != null) Log.d(TAG, "MediaPipe 4x4 column-major=${matrix.contentToString()}")
             lastPoseLogAtMs = now
         }
 
@@ -336,16 +350,42 @@ class FaceTrackingController(
      * coordinate alignment as a movement.
      */
     @Synchronized
-    private fun FloatArray.toHeadAngles(): Triple<Float, Float, Float> {
-        val current = toRotation3x3() ?: return Triple(0f, 0f, 0f)
+    private fun FloatArray.toHeadAngles(): Triple<Float, Float, Float>? {
+        val current = toRotation3x3() ?: return null
         val neutral = neutralHeadRotation
         if (neutral == null) {
             neutralHeadRotation = current
             return Triple(0f, 0f, 0f)
         }
+        return relativeRotationToHeadAngles(current, neutral)
+    }
 
-        // Relative transform = current * inverse(neutral); rotation matrices
-        // are orthonormal, so inverse(neutral) is its transpose.
+    /**
+     * Fallback pose estimator used only when MediaPipe does not provide a valid
+     * facialTransformationMatrix. It reconstructs the face-local axes from the
+     * 3D landmarks (eye corners, forehead and chin), then uses the same neutral-
+     * relative rotation and Cubism axis mapping as the official matrix path.
+     *
+     * NormalizedLandmark.z is scaled like image x and smaller values are nearer
+     * the camera; negate it to use a face-front-positive local Z axis.
+     */
+    @Synchronized
+    private fun List<NormalizedLandmark>.toHeadAnglesFromLandmarks(): Triple<Float, Float, Float>? {
+        val current = toFaceRotation3x3() ?: return null
+        val neutral = neutralLandmarkRotation
+        if (neutral == null) {
+            neutralLandmarkRotation = current
+            return Triple(0f, 0f, 0f)
+        }
+        return relativeRotationToHeadAngles(current, neutral)
+    }
+
+    private fun relativeRotationToHeadAngles(
+        current: FloatArray,
+        neutral: FloatArray,
+    ): Triple<Float, Float, Float> {
+        // Both matrices are row-major 3x3 rotations. The relative camera-space
+        // pose is current * inverse(neutral), and inverse(neutral) = transpose.
         val relative = FloatArray(9)
         for (row in 0..2) {
             for (column in 0..2) {
@@ -357,9 +397,7 @@ class FaceTrackingController(
             }
         }
 
-        // Decompose R = Rz(angleZ) * Ry(angleX) * Rx(angleY).
-        // Cubism Angle X is horizontal head yaw (rotation about Y),
-        // Angle Y is vertical pitch (rotation about X), and Angle Z is roll.
+        // Decompose R = Rz(roll) * Ry(yaw) * Rx(pitch).
         val r00 = relative[0]
         val r10 = relative[3]
         val r20 = relative[6]
@@ -371,14 +409,71 @@ class FaceTrackingController(
         val roll = atan2(r10, r00)
         val radiansToDegrees = 180f / Math.PI.toFloat()
 
-        // Keep the established screen-space sign convention and gains.
-        // MediaPipe's canonical face looks along +Z. A positive Y-axis yaw
-        // rotates the nose toward +X (screen-right), which is Cubism's positive
-        // ParamAngleX direction. Do not negate this axis.
+        // MediaPipe canonical face front is +Z. Positive Y yaw points the nose
+        // toward +X (screen-right), matching Cubism's positive ParamAngleX.
         val angleX = (yaw * radiansToDegrees * 1.35f).coerceIn(-30f, 30f)
+        // Positive X pitch points the face downward in the right-handed basis,
+        // while Cubism positive ParamAngleY means looking upward.
         val angleY = (-pitch * radiansToDegrees * 1.30f).coerceIn(-25f, 25f)
+        // Positive Z roll is counter-clockwise in Y-up space; Cubism positive
+        // ParamAngleZ is a clockwise screen-right tilt.
         val angleZ = (-roll * radiansToDegrees * 1.15f).coerceIn(-30f, 30f)
         return Triple(angleX, angleY, angleZ)
+    }
+
+    /**
+     * Estimate a face-oriented rotation basis from MediaPipe's normalized 3D
+     * mesh. We use pixel-scaled coordinates because x/z use image-width units,
+     * while y is normalized by image height.
+     */
+    private fun List<NormalizedLandmark>.toFaceRotation3x3(): FloatArray? {
+        if (size <= 263) return null
+
+        fun point(index: Int): FloatArray {
+            val landmark = get(index)
+            return floatArrayOf(
+                landmark.x() * inputFrameWidth,
+                -landmark.y() * inputFrameHeight,
+                -landmark.z() * inputFrameWidth,
+            )
+        }
+
+        fun subtract(a: FloatArray, b: FloatArray) =
+            floatArrayOf(a[0] - b[0], a[1] - b[1], a[2] - b[2])
+
+        fun dot(a: FloatArray, b: FloatArray) =
+            a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+        fun normalize(value: FloatArray): FloatArray? {
+            val length = sqrt(dot(value, value))
+            if (!length.isFinite() || length < 1e-5f) return null
+            return floatArrayOf(value[0] / length, value[1] / length, value[2] / length)
+        }
+
+        fun cross(a: FloatArray, b: FloatArray) = floatArrayOf(
+            a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0],
+        )
+
+        // 33 and 263 are the outer eye corners. 10 and 152 are forehead and chin.
+        val right = normalize(subtract(point(263), point(33))) ?: return null
+        val upRaw = subtract(point(10), point(152))
+        val upOrthogonal = floatArrayOf(
+            upRaw[0] - right[0] * dot(upRaw, right),
+            upRaw[1] - right[1] * dot(upRaw, right),
+            upRaw[2] - right[2] * dot(upRaw, right),
+        )
+        val up = normalize(upOrthogonal) ?: return null
+        val forward = normalize(cross(right, up)) ?: return null
+        val correctedUp = normalize(cross(forward, right)) ?: return null
+
+        // Row-major matrix with the face's right, up and forward axes as columns.
+        return floatArrayOf(
+            right[0], correctedUp[0], forward[0],
+            right[1], correctedUp[1], forward[1],
+            right[2], correctedUp[2], forward[2],
+        )
     }
 
     /**
