@@ -46,6 +46,8 @@ class FaceTrackingController(
     @Volatile private var cameraProvider: ProcessCameraProvider? = null
     @Volatile private var smoothedTrackingData: FaceTrackingData? = null
     @Volatile private var lastFaceAtMs = 0L
+    // Reference pose captured from the first valid face frame; tracking is relative to it.
+    @Volatile private var neutralHeadRotation: FloatArray? = null
     private var lastTimestampMs = 0L
 
     fun start() {
@@ -167,6 +169,7 @@ class FaceTrackingController(
         cameraExecutor.shutdown()
         smoothedTrackingData = null
         lastFaceAtMs = 0L
+        neutralHeadRotation = null
         onTracking(null)
     }
 
@@ -296,28 +299,86 @@ class FaceTrackingController(
     }
 
     /**
-     * MediaPipe returns a flat column-major 4x4 facial transform matrix.
-     * Extract Y-X-Z Euler angles from its upper-left 3x3 rotation matrix.
+     * MediaPipe's Java FaceLandmarkerResult documents this as a flat column-major
+     * 4x4 matrix. Its upper-left 3x3 block maps the canonical face orientation
+     * to the detected face orientation.
+     *
+     * Capture the first valid orientation as the neutral pose, then extract the
+     * relative rotation. This removes a permanent head-angle offset caused by
+     * the user's natural resting pose and avoids treating the canonical model's
+     * coordinate alignment as a movement.
      */
+    @Synchronized
     private fun FloatArray.toHeadAngles(): Triple<Float, Float, Float> {
-        if (size < 16) return Triple(0f, 0f, 0f)
+        val current = toRotation3x3() ?: return Triple(0f, 0f, 0f)
+        val neutral = neutralHeadRotation
+        if (neutral == null) {
+            neutralHeadRotation = current
+            return Triple(0f, 0f, 0f)
+        }
 
-        val r00 = this[0]
-        val r10 = this[1]
-        val r20 = this[2]
-        val r21 = this[6]
-        val r22 = this[10]
+        // Relative transform = current * inverse(neutral); rotation matrices
+        // are orthonormal, so inverse(neutral) is its transpose.
+        val relative = FloatArray(9)
+        for (row in 0..2) {
+            for (column in 0..2) {
+                var value = 0f
+                for (k in 0..2) {
+                    value += current[row * 3 + k] * neutral[column * 3 + k]
+                }
+                relative[row * 3 + column] = value
+            }
+        }
+
+        // Decompose R = Rz(angleZ) * Ry(angleX) * Rx(angleY).
+        // Cubism Angle X is horizontal head yaw (rotation about Y),
+        // Angle Y is vertical pitch (rotation about X), and Angle Z is roll.
+        val r00 = relative[0]
+        val r10 = relative[3]
+        val r20 = relative[6]
+        val r21 = relative[7]
+        val r22 = relative[8]
+
         val yaw = atan2(-r20, sqrt(r00 * r00 + r10 * r10))
         val pitch = atan2(r21, r22)
         val roll = atan2(r10, r00)
-        val radiansToDegrees = (180f / Math.PI.toFloat())
+        val radiansToDegrees = 180f / Math.PI.toFloat()
 
-        // Negative horizontal/vertical signs align camera movement with Cubism's
-        // standard screen-space directions; gains make small turns perceptible.
+        // Keep the established screen-space sign convention and gains.
         val angleX = (-yaw * radiansToDegrees * 1.35f).coerceIn(-30f, 30f)
         val angleY = (-pitch * radiansToDegrees * 1.30f).coerceIn(-25f, 25f)
         val angleZ = (-roll * radiansToDegrees * 1.15f).coerceIn(-30f, 30f)
         return Triple(angleX, angleY, angleZ)
+    }
+
+    /**
+     * Normalize the three basis columns before Euler extraction. MediaPipe's
+     * facial transform may include scale; scale must not be mistaken for pose.
+     * Returned values are row-major 3x3, despite the source being column-major.
+     */
+    private fun FloatArray.toRotation3x3(): FloatArray? {
+        if (size < 16 || (0..10).any { !this[it].isFinite() }) return null
+
+        val scaleX = sqrt(this[0] * this[0] + this[1] * this[1] + this[2] * this[2])
+        val scaleY = sqrt(this[4] * this[4] + this[5] * this[5] + this[6] * this[6])
+        val scaleZ = sqrt(this[8] * this[8] + this[9] * this[9] + this[10] * this[10])
+        if (scaleX < 1e-6f || scaleY < 1e-6f || scaleZ < 1e-6f) return null
+
+        val c0x = this[0] / scaleX
+        val c0y = this[1] / scaleX
+        val c0z = this[2] / scaleX
+        val c1x = this[4] / scaleY
+        val c1y = this[5] / scaleY
+        val c1z = this[6] / scaleY
+        val c2x = this[8] / scaleZ
+        val c2y = this[9] / scaleZ
+        val c2z = this[10] / scaleZ
+
+        return floatArrayOf(
+            c0x, c1x, c2x,
+            c0y, c1y, c2y,
+            c0z, c1z, c2z,
+        )
     }
 
     data class FaceTrackingData(
