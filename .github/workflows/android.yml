@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, fix/face-tracking-priority, fix/mediapipe-vtuber-theme]
+    branches: [main, fix/face-tracking-priority, fix/mediapipe-vtuber-theme, fix/face-pose-matrix]
 
 permissions:
   contents: read
