@@ -409,7 +409,6 @@ void LAppModel::Update()
     _updateScheduler.OnLateUpdate(_model, deltaTimeSeconds);
 
     // Apply the live camera pose after motion/physics updates so tracking drives the final pose.
-    const JniBridgeC::FaceTrackingData face = JniBridgeC::GetFaceTrackingData();
     if (face.enabled && _model != NULL)
     {
         CubismIdManager* ids = CubismFramework::GetIdManager();
