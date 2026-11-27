@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.FoxGirlSupremacy" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/fox_orange</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/fox_cream</item>
+        <item name="colorOnPrimaryContainer">@color/fox_orange_dark</item>
+        <item name="colorSecondary">@color/fox_pink</item>
+        <item name="colorOnSecondary">@color/white</item>
+    </style>
+
+    <style name="Theme.FoxGirlSupremacy.Snow" parent="Theme.FoxGirlSupremacy">
+        <item name="colorPrimary">@color/snow_blue</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/snow_pale</item>
+        <item name="colorOnPrimaryContainer">@color/snow_blue_dark</item>
+        <item name="colorSecondary">@color/snow_ice</item>
+        <item name="colorOnSecondary">@color/white</item>
+    </style>
+</resources>
