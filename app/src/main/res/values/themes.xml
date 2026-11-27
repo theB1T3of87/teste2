@@ -16,7 +16,6 @@
         <item name="colorOnPrimaryContainer">#B71C1C</item>
         <item name="colorSecondary">#F44336</item>
     </style>
-    <style name="Theme.VTuber.Orange" parent="Theme.VTuber" />
     <style name="Theme.VTuber.Yellow" parent="Theme.VTuber">
         <item name="colorPrimary">#FDD835</item>
         <item name="colorOnPrimary">#211A17</item>
