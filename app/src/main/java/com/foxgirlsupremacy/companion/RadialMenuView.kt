@@ -31,15 +31,15 @@ class RadialMenuView(
     private val loc = IntArray(2)
 
     private val scrimPaint = Paint().apply { color = 0x66000000 }
-    private val itemPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#3A2C26") }
-    private val itemHotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF7043") }
+    private val itemPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = menuColor }
+    private val itemHotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = lighten(menuColor) }
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textAlign = Paint.Align.CENTER
         textSize = 13 * density
     }
 
-    private fun itemCenter(index: Int): PointF {
+    private fun lighten(color: Int): Int = Color.rgb(\n        (Color.red(color) + 255) / 2, (Color.green(color) + 255) / 2, (Color.blue(color) + 255) / 2,\n    )\n\n    private fun itemCenter(index: Int): PointF {
         getLocationOnScreen(loc)
         val localCenterX = centerX - loc[0]
         val localCenterY = centerY - loc[1]
