@@ -255,7 +255,7 @@ class FaceTrackingController(
         fun score(name: String): Float = (scores[name] ?: 0f).coerceIn(0f, 1f)
 
         val matrix = facialTransformationMatrixes().orElse(emptyList()).firstOrNull()
-        val (angleX, angleY, angleZ) = matrix?.let(FacePoseMath::fromColumnMajor) ?: Triple(0f, 0f, 0f)
+        val (angleX, angleY, angleZ) = matrix?.let { FacePoseMath.fromColumnMajor(it) } ?: Triple(0f, 0f, 0f)
 
         val blinkLeft = score("eyeBlinkLeft")
         val blinkRight = score("eyeBlinkRight")
