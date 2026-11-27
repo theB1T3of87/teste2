@@ -1,20 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.FoxGirlSupremacy" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/fox_orange</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <item name="colorPrimaryContainer">@color/fox_cream</item>
-        <item name="colorOnPrimaryContainer">@color/fox_orange_dark</item>
-        <item name="colorSecondary">@color/fox_pink</item>
-        <item name="colorOnSecondary">@color/white</item>
+    <style name="Theme.VTuber" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#FF9800</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#FFF3E0</item>
+        <item name="colorOnPrimaryContainer">#E65100</item>
+        <item name="colorSecondary">#FF9800</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
     </style>
 
-    <style name="Theme.FoxGirlSupremacy.Snow" parent="Theme.FoxGirlSupremacy">
-        <item name="colorPrimary">@color/snow_blue</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <item name="colorPrimaryContainer">@color/snow_pale</item>
-        <item name="colorOnPrimaryContainer">@color/snow_blue_dark</item>
-        <item name="colorSecondary">@color/snow_ice</item>
-        <item name="colorOnSecondary">@color/white</item>
+    <style name="Theme.VTuber.Red" parent="Theme.VTuber">
+        <item name="colorPrimary">#F44336</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#FFEBEE</item>
+        <item name="colorOnPrimaryContainer">#B71C1C</item>
+        <item name="colorSecondary">#F44336</item>
+    </style>
+    <style name="Theme.VTuber.Orange" parent="Theme.VTuber" />
+    <style name="Theme.VTuber.Yellow" parent="Theme.VTuber">
+        <item name="colorPrimary">#FDD835</item>
+        <item name="colorOnPrimary">#211A17</item>
+        <item name="colorPrimaryContainer">#FFFDE7</item>
+        <item name="colorOnPrimaryContainer">#F57F17</item>
+        <item name="colorSecondary">#FDD835</item>
+        <item name="colorOnSecondary">#211A17</item>
+    </style>
+    <style name="Theme.VTuber.Green" parent="Theme.VTuber">
+        <item name="colorPrimary">#4CAF50</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#E8F5E9</item>
+        <item name="colorOnPrimaryContainer">#1B5E20</item>
+        <item name="colorSecondary">#4CAF50</item>
+    </style>
+    <style name="Theme.VTuber.Blue" parent="Theme.VTuber">
+        <item name="colorPrimary">#2196F3</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#E3F2FD</item>
+        <item name="colorOnPrimaryContainer">#0D47A1</item>
+        <item name="colorSecondary">#2196F3</item>
+    </style>
+    <style name="Theme.VTuber.Cyan" parent="Theme.VTuber">
+        <item name="colorPrimary">#00BCD4</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#E0F7FA</item>
+        <item name="colorOnPrimaryContainer">#006064</item>
+        <item name="colorSecondary">#00BCD4</item>
+    </style>
+    <style name="Theme.VTuber.Pink" parent="Theme.VTuber">
+        <item name="colorPrimary">#E91E63</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#FCE4EC</item>
+        <item name="colorOnPrimaryContainer">#880E4F</item>
+        <item name="colorSecondary">#E91E63</item>
+    </style>
+    <style name="Theme.VTuber.Purple" parent="Theme.VTuber">
+        <item name="colorPrimary">#9C27B0</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#F3E5F5</item>
+        <item name="colorOnPrimaryContainer">#4A148C</item>
+        <item name="colorSecondary">#9C27B0</item>
     </style>
 </resources>
