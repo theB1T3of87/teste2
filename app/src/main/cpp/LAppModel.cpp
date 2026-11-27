@@ -424,8 +424,8 @@ void LAppModel::Update()
         setParam("ParamBodyAngleX", face.angleX * 0.30f);
         setParam("ParamEyeLOpen", face.eyeLOpen);
         setParam("ParamEyeROpen", face.eyeROpen);
-        setParam("ParamEyeBallX", face.faceX);
-        setParam("ParamEyeBallY", face.faceY);
+        setParam("ParamEyeBallX", face.gazeX);
+        setParam("ParamEyeBallY", face.gazeY);
         setParam("ParamMouthForm", face.mouthForm);
         setParam("ParamMouthOpenY", face.mouthOpen);
     }
