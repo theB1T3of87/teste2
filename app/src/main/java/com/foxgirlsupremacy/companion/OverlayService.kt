@@ -324,7 +324,6 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
             Settings.KEY_FACE_TRACKING -> { startForegroundNotification(); updateFaceTracking() }
             Settings.KEY_MODEL -> rebuildOverlay()
             Settings.KEY_MENU_COLOR -> radialMenuView?.let { dismissRadialMenu(); showRadialMenu() }
-            Settings.KEY_MENU_COLOR -> radialMenuView?.let { dismissRadialMenu(); showRadialMenu() }
         }
 
         if (key?.startsWith("anim_map_") == true) {
