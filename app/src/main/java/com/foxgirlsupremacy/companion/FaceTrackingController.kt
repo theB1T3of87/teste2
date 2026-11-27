@@ -9,6 +9,7 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
+import android.os.SystemClock
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
@@ -36,6 +37,7 @@ class FaceTrackingController(
     @Volatile private var stopped = false
     private var cameraProvider: ProcessCameraProvider? = null
     @Volatile private var smoothedTrackingData: FaceTrackingData? = null
+    private var lastValidTrackingAtMs = 0L
 
     fun start() {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return
@@ -79,16 +81,25 @@ class FaceTrackingController(
         cameraProvider?.unbindAll()
         detector.close()
         cameraExecutor.shutdown()
-        publishTracking(null)
+        smoothedTrackingData = null
+        lastValidTrackingAtMs = 0L
+        onTracking(null)
     }
 
     /** Smooth frame-to-frame detector noise without making blinks feel sluggish. */
     private fun publishTracking(data: FaceTrackingData?) {
         if (data == null) {
+            val previous = smoothedTrackingData
+            // Brief detector dropouts should not hand control back to idle animation.
+            if (previous != null && SystemClock.uptimeMillis() - lastValidTrackingAtMs < 350L) {
+                onTracking(previous)
+                return
+            }
             smoothedTrackingData = null
             onTracking(null)
             return
         }
+        lastValidTrackingAtMs = SystemClock.uptimeMillis()
         val previous = smoothedTrackingData
         val smoothed = if (previous == null) data else FaceTrackingData(
             angleX = lerp(previous.angleX, data.angleX, 0.35f),
