@@ -44,7 +44,7 @@ object NativeCubismBridge {
     @JvmStatic external fun nativeSetFaceTrackingData(
         enabled: Boolean,
         angleX: Float, angleY: Float, angleZ: Float,
-        eyeLOpen: Float, eyeROpen: Float, mouthForm: Float,
+        eyeLOpen: Float, eyeROpen: Float, mouthForm: Float, mouthOpen: Float,
         faceX: Float, faceY: Float,
     )
     @JvmStatic external fun nativePlayMotion(group: String, index: Int)
