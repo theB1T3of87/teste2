@@ -34,7 +34,7 @@ class Settings(context: Context) {
 
     var menuColor: String
         get() {
-            val stored = prefs.getString(KEY_MENU_COLOR, "#FF9800") ?: "#FF9800"
+            val stored = prefs.getString(KEY_MENU_COLOR, "#9C27B0") ?: "#9C27B0"
             return if (stored.equals("#FF7043", ignoreCase = true)) "#FF9800" else stored
         }
         set(value) = prefs.edit().putString(KEY_MENU_COLOR, value).apply()
