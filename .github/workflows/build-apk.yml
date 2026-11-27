@@ -2,7 +2,7 @@ name: Build FoxGirlSupremacy APK
 
 on:
   push:
-    branches: [main, fix/mediapipe-vtuber-theme]
+    branches: [main, fix/mediapipe-vtuber-theme, fix/face-pose-matrix]
   workflow_dispatch:
 
 permissions:
@@ -25,10 +25,15 @@ jobs:
         with:
           packages: 'platform-tools'
 
+      - name: Run face tracking unit tests
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:testDebugUnitTest
+
       - name: Build APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

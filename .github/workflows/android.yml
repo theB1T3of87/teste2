@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, fix/face-tracking-priority, fix/mediapipe-vtuber-theme]
+    branches: [main, fix/face-tracking-priority, fix/mediapipe-vtuber-theme, fix/face-pose-matrix]
 
 permissions:
   contents: read
@@ -24,6 +24,11 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
+
+      - name: Run face tracking unit tests
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:testDebugUnitTest
 
       - name: Build APK
         run: |
