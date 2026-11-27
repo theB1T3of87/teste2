@@ -9,6 +9,7 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
+import android.os.SystemClock
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
@@ -35,6 +36,8 @@ class FaceTrackingController(
     )
     @Volatile private var stopped = false
     private var cameraProvider: ProcessCameraProvider? = null
+    @Volatile private var smoothedTrackingData: FaceTrackingData? = null
+    private var lastValidTrackingAtMs = 0L
 
     fun start() {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return
@@ -67,9 +70,9 @@ class FaceTrackingController(
         detector.process(input)
             .addOnSuccessListener { faces ->
                 val face = faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
-                onTracking(face?.toTrackingData(input.width, input.height))
+                publishTracking(face?.toTrackingData(input.width, input.height))
             }
-            .addOnFailureListener { onTracking(null) }
+            .addOnFailureListener { publishTracking(null) }
             .addOnCompleteListener { proxy.close() }
     }
 
@@ -78,8 +81,42 @@ class FaceTrackingController(
         cameraProvider?.unbindAll()
         detector.close()
         cameraExecutor.shutdown()
+        smoothedTrackingData = null
+        lastValidTrackingAtMs = 0L
         onTracking(null)
     }
+
+    /** Smooth frame-to-frame detector noise without making blinks feel sluggish. */
+    private fun publishTracking(data: FaceTrackingData?) {
+        if (data == null) {
+            val previous = smoothedTrackingData
+            // Brief detector dropouts should not hand control back to idle animation.
+            if (previous != null && SystemClock.uptimeMillis() - lastValidTrackingAtMs < 350L) {
+                onTracking(previous)
+                return
+            }
+            smoothedTrackingData = null
+            onTracking(null)
+            return
+        }
+        lastValidTrackingAtMs = SystemClock.uptimeMillis()
+        val previous = smoothedTrackingData
+        val smoothed = if (previous == null) data else FaceTrackingData(
+            angleX = lerp(previous.angleX, data.angleX, 0.35f),
+            angleY = lerp(previous.angleY, data.angleY, 0.35f),
+            angleZ = lerp(previous.angleZ, data.angleZ, 0.35f),
+            eyeLOpen = lerp(previous.eyeLOpen, data.eyeLOpen, 0.65f),
+            eyeROpen = lerp(previous.eyeROpen, data.eyeROpen, 0.65f),
+            mouthForm = lerp(previous.mouthForm, data.mouthForm, 0.35f),
+            faceX = lerp(previous.faceX, data.faceX, 0.35f),
+            faceY = lerp(previous.faceY, data.faceY, 0.35f),
+        )
+        smoothedTrackingData = smoothed
+        onTracking(smoothed)
+    }
+
+    private fun lerp(from: Float, to: Float, amount: Float): Float =
+        from + (to - from) * amount
 
     private fun Face.toTrackingData(frameWidth: Int, frameHeight: Int): FaceTrackingData {
         val box = boundingBox

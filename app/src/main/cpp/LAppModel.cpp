@@ -37,6 +37,7 @@ LAppModel::LAppModel()
     , _modelSetting(NULL)
     , _userTimeSeconds(0.0f)
     , _motionUpdated(false)
+    , _faceTrackingActive(false)
 {
     if (DebugLogEnable)
     {
@@ -372,6 +373,16 @@ void LAppModel::Update()
     const csmFloat32 deltaTimeSeconds = LAppPal::GetDeltaTime();
     _userTimeSeconds += deltaTimeSeconds;
 
+    // Face tracking takes ownership of the head pose. Stop an already-running
+    // idle motion on activation and do not auto-start another idle motion until
+    // tracking is disabled; explicit user-triggered motions remain available.
+    const JniBridgeC::FaceTrackingData face = JniBridgeC::GetFaceTrackingData();
+    if (face.enabled && !_faceTrackingActive)
+    {
+        _motionManager->StopAllMotions();
+    }
+    _faceTrackingActive = face.enabled;
+
     // モーションによるパラメータ更新の有無
     _motionUpdated = false;
 
@@ -379,8 +390,11 @@ void LAppModel::Update()
     _model->LoadParameters(); // 前回セーブされた状態をロード
     if (_motionManager->IsFinished())
     {
-        // モーションの再生がない場合、待機モーションの中からランダムで再生する
-        StartRandomMotion(MotionGroupIdle, PriorityIdle);
+        if (!face.enabled)
+        {
+            // モーションの再生がない場合、待機モーションの中からランダムで再生する
+            StartRandomMotion(MotionGroupIdle, PriorityIdle);
+        }
     }
     else
     {
@@ -395,7 +409,6 @@ void LAppModel::Update()
     _updateScheduler.OnLateUpdate(_model, deltaTimeSeconds);
 
     // Apply the live camera pose after motion/physics updates so tracking drives the final pose.
-    const JniBridgeC::FaceTrackingData face = JniBridgeC::GetFaceTrackingData();
     if (face.enabled && _model != NULL)
     {
         CubismIdManager* ids = CubismFramework::GetIdManager();
@@ -408,6 +421,7 @@ void LAppModel::Update()
         setParam("ParamAngleX", face.angleX);
         setParam("ParamAngleY", face.angleY);
         setParam("ParamAngleZ", face.angleZ);
+        setParam("ParamBodyAngleX", face.angleX * 0.30f);
         setParam("ParamEyeLOpen", face.eyeLOpen);
         setParam("ParamEyeROpen", face.eyeROpen);
         setParam("ParamEyeBallX", face.faceX);
