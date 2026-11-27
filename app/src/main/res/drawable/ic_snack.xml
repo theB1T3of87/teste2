@@ -1,0 +1,18 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- corps du poisson -->
+    <path
+        android:fillColor="#FFB74D"
+        android:pathData="M30,24 m-14,0 a14,9 0 1,0 28,0 a14,9 0 1,0 -28,0" />
+    <!-- queue -->
+    <path
+        android:fillColor="#FB8C00"
+        android:pathData="M16,24 L6,16 L9,24 L6,32 Z" />
+    <!-- œil -->
+    <path
+        android:fillColor="#3E2723"
+        android:pathData="M36,22 m-2,0 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0" />
+</vector>

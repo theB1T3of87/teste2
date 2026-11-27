@@ -1,0 +1,17 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/app/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+.kotlin/
+
+# Live2D Cubism SDK — propriétaire, à télécharger séparément (cf. README)
+/CubismSdkForJava-5-r.5/
+
+# Modèles importés à l'exécution (ne pas versionner de modèles non redistribuables)
+/app/src/main/assets/live2d/imported/

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Fox Girl Supremacy</string>
+    <string name="notif_channel_name">Compagne</string>
+    <string name="notif_title">La renarde est là</string>
+    <string name="notif_text">Elle se balade par-dessus tes apps.</string>
+
+    <string name="header_subtitle">Ta compagne, par-dessus toutes tes apps.</string>
+
+    <string name="card_state_title">Présence</string>
+    <string name="switch_companion">Compagne active</string>
+    <string name="switch_companion_sub">L\'afficher par-dessus les autres apps</string>
+
+    <string name="card_appearance_title">Apparence</string>
+    <string name="label_size">Taille</string>
+    <string name="switch_snow">Renarde des neiges</string>
+    <string name="switch_snow_sub">Thème glacé, pelage blanc</string>
+    <string name="label_model">Modèle</string>
+    <string name="import_model">Importer un modèle</string>
+    <string name="import_progress">Import en cours…</string>
+    <string name="import_done">Modèle importé : %1$s</string>
+    <string name="import_invalid">Dossier invalide : aucun .model3.json trouvé</string>
+    <string name="import_failed">Échec de l\'import</string>
+
+    <string name="anim_open">Voir les animations</string>
+    <string name="card_anim_title">Animations</string>
+    <string name="anim_card_hint">Touche le nom pour voir l\'anim ; assigne-la à une action (poids = fréquence).</string>
+    <string name="anim_hint">Touche une animation pour la voir sur la compagne.</string>
+    <string name="anim_motions">Motions</string>
+    <string name="anim_expressions">Expressions</string>
+    <string name="anim_empty">Ce modèle n\'a ni motion ni expression (il respire et cligne quand même).</string>
+    <string name="anim_none">Aucun modèle sélectionné.</string>
+
+    <string name="card_behavior_title">Comportement</string>
+    <string name="switch_reactions">Réactions au toucher</string>
+    <string name="switch_reactions_sub">Elle réagit quand on la touche</string>
+    <string name="switch_animations">Animations</string>
+    <string name="switch_animations_sub">Respiration au repos</string>
+    <string name="switch_wander">Déambulation</string>
+    <string name="switch_wander_sub">Elle se balade en bas de l\'écran</string>
+
+    <string name="perm_overlay">Affichage par-dessus les apps</string>
+    <string name="perm_notif">Notification</string>
+    <string name="perm_granted">accordée</string>
+    <string name="perm_missing">à accorder</string>
+
+    <string name="notif_action_snack">🐟 Snack</string>
+
+    <string name="action_pet">Caresser</string>
+    <string name="action_feed">Nourrir</string>
+    <string name="action_talk">Parler</string>
+    <string name="action_normal">Normal</string>
+    <string name="action_off">Éteindre</string>
+    <string name="action_bigger">Agrandir</string>
+    <string name="action_smaller">Réduire</string>
+
+    <string-array name="chat_lines">
+        <item>Coucou !</item>
+        <item>Tu fais quoi ?</item>
+        <item>J\'ai un peu faim…</item>
+        <item>Caresse ?</item>
+        <item>Hehe~</item>
+        <item>Je veille sur toi.</item>
+        <item>On joue ?</item>
+        <item>Tu m\'as manqué.</item>
+        <item>*remue la queue*</item>
+        <item>Encore là, toi ?</item>
+    </string-array>
+</resources>
