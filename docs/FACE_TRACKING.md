@@ -1,41 +1,39 @@
-# Face tracking — Android + Cubism Native SDK
+# Face tracking — Live2D Vtuber Studio
 
-## Architecture
+## Active implementation
 
-- `FaceTrackingController.kt`: CameraX `ImageAnalysis` + ML Kit Face Detection.
-- `OverlayService` is a `LifecycleService`, so CameraX can bind to the service lifecycle.
-- `Live2DRenderer.kt` owns a transparent `TextureView` and an EGL/OpenGL ES 2 render thread.
-- `NativeCubismBridge.kt` exposes the Java/Kotlin callbacks used by the Native SDK and the JNI entry points.
-- `app/src/main/cpp/JniBridgeC.cpp` connects the Android host to the official Cubism Native Framework.
-- `LAppModel.cpp` applies the tracked pose to the Cubism model after motion/physics updates.
+The app's active tracker is `app/src/main/java/com/foxgirlsupremacy/companion/FaceTrackingController.kt`. It uses CameraX `ImageAnalysis` and Google's MediaPipe Tasks Vision `FaceLandmarker` in `LIVE_STREAM` mode with the bundled `face_landmarker.task` model.
 
-The pipeline stays on-device: camera frames are processed locally, are not saved, and are not uploaded. `STRATEGY_KEEP_ONLY_LATEST` avoids queuing old frames when analysis falls behind.
+`OverlayService.updateFaceTracking()` starts and stops this controller with the overlay service lifecycle. Results are converted to `FaceTrackingData` and sent to `Live2DRenderer.setFaceTrackingData()`. The native Cubism model applies head angles, eye openness, gaze, mouth form and mouth opening after its motion/physics updates.
 
-## Cubism parameters
+Frames are processed locally. `STRATEGY_KEEP_ONLY_LATEST` and the in-flight guard prevent a backlog of stale camera frames. The front camera is used; frames are rotated upright and intentionally not mirrored before inference.
 
-| Measurement | Cubism parameter |
+## MediaPipe outputs and Cubism parameters
+
+| MediaPipe output | Cubism parameter |
 |---|---|
-| Horizontal head rotation | `ParamAngleX` |
-| Vertical head rotation | `ParamAngleY` |
-| Head roll | `ParamAngleZ` |
-| Left/right eye openness | `ParamEyeLOpen`, `ParamEyeROpen` |
-| Approximate face position / gaze | `ParamEyeBallX`, `ParamEyeBallY` |
-| Smile probability | `ParamMouthForm` |
+| Facial transformation matrix | `ParamAngleX`, `ParamAngleY`, `ParamAngleZ` |
+| `eyeBlinkLeft`, `eyeBlinkRight` | `ParamEyeLOpen`, `ParamEyeROpen` |
+| `eyeLook*` blendshapes | `ParamEyeBallX`, `ParamEyeBallY` |
+| `jawOpen` | `ParamMouthOpenY` |
+| `mouthSmile*`, `mouthFrown*` | `ParamMouthForm` |
 
-Missing parameters are ignored by the Cubism model. Eye and smile values are ML Kit classifications and work best when the face is nearly frontal. Smile probability is not a measurement of mouth opening. Face position is only an approximation of gaze direction.
+The app requests one face and enables both face blendshapes and the facial transformation matrix. Smoothing is applied before the values reach Cubism. The Cubism model must expose the conventional parameter IDs for each movement to be visible.
+
+## Separate experimental integration
+
+The top-level `tracking-integration/` directory contains a separate MNN-based MediaPipe-compatible integration payload. It is not the active camera path used by `OverlayService`; do not treat its Kotlin/JNI sources as wired into the app unless the app source set and lifecycle are explicitly migrated.
 
 ## Android permissions
 
-The Face tracking switch requests `CAMERA`. The service declares `specialUse|camera` foreground-service types and `FOREGROUND_SERVICE_CAMERA`. Camera use must be started while the app is in a state permitted by Android's foreground-service camera restrictions.
+The face-tracking switch requires the `CAMERA` permission. The overlay service declares the `specialUse|camera` foreground-service types and `FOREGROUND_SERVICE_CAMERA`. Camera use must be started while Android permits camera access from a foreground service.
 
-## Native SDK and build
+## Build
 
-This project now uses the uploaded **Cubism SDK for Native 5 R5** package, not the Java SDK. The Android NDK builds `libFoxCubism.so` through CMake and links the SDK's static Core library for the selected ABI. The SDK source and notices are kept under `CubismSdkForNative-5-r.5/`.
-
-Build requirements:
+Requirements:
 
 - JDK 17 or newer
-- Android Studio / Android SDK Platform 35
+- Android SDK Platform 35
 - Android NDK `26.3.11579264`
 - CMake `3.22.1`
 - Gradle wrapper distribution `8.14.3`
@@ -43,13 +41,9 @@ Build requirements:
 Build a debug APK with:
 
 ```bash
-./gradlew assembleDebug
+./gradlew :app:assembleDebug
 ```
 
-Expected output:
+Expected output: `app/build/outputs/apk/debug/app-debug.apk`.
 
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
-
-The build and runtime still need verification on a machine with the Android SDK/NDK installed and network access for the Gradle distribution and Maven dependencies.
+Runtime tracking quality still needs to be tested on the target phone with the actual Live2D model.
