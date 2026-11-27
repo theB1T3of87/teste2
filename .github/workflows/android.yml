@@ -25,6 +25,11 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      - name: Run face tracking unit tests
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:testDebugUnitTest
+
       - name: Build APK
         run: |
           chmod +x gradlew
