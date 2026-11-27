@@ -32,12 +32,8 @@ class Settings(context: Context) {
         get() = prefs.getBoolean(KEY_WANDER, true)
         set(value) = prefs.edit().putBoolean(KEY_WANDER, value).apply()
 
-    var snowFox: Boolean
-        get() = prefs.getBoolean(KEY_SNOW, false)
-        set(value) = prefs.edit().putBoolean(KEY_SNOW, value).apply()
-
     var menuColor: String
-        get() = prefs.getString(KEY_MENU_COLOR, "#FF7043") ?: "#FF7043"
+        get() = prefs.getString(KEY_MENU_COLOR, "#FF9800") ?: "#FF9800"
         set(value) = prefs.edit().putString(KEY_MENU_COLOR, value).apply()
 
     var modelId: String
@@ -74,7 +70,6 @@ class Settings(context: Context) {
         const val KEY_ANIMATIONS = "animations_enabled"
         const val KEY_WANDER = "wander_enabled"
         const val KEY_FACE_TRACKING = "face_tracking_enabled"
-        const val KEY_SNOW = "snow_fox"
         const val KEY_MODEL = "model_id"
         const val KEY_MENU_COLOR = "menu_color"
         const val KEY_POS_X = "pos_x"
