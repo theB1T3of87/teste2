@@ -36,7 +36,7 @@ public:
         bool enabled;
         float angleX, angleY, angleZ;
         float eyeLOpen, eyeROpen, mouthForm, mouthOpen;
-        float faceX, faceY;
+        float gazeX, gazeY;
     };
     static FaceTrackingData GetFaceTrackingData();
 

@@ -302,7 +302,6 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
     private fun applySettings() {
         renderer.setScale(settings.scale)
         renderer.setAnimationsEnabled(settings.animationsEnabled)
-        renderer.setSnowFox(settings.snowFox)
         controller.wanderEnabled = settings.wanderEnabled
         overlayView?.let { windowManager.updateViewLayout(it, params) }
     }
@@ -319,7 +318,6 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
                 overlayView?.let { windowManager.updateViewLayout(it, params) }
             }
             Settings.KEY_ANIMATIONS -> renderer.setAnimationsEnabled(settings.animationsEnabled)
-            Settings.KEY_SNOW -> renderer.setSnowFox(settings.snowFox)
             Settings.KEY_WANDER -> controller.wanderEnabled = settings.wanderEnabled
             Settings.KEY_FACE_TRACKING -> { startForegroundNotification(); updateFaceTracking() }
             Settings.KEY_MODEL -> rebuildOverlay()
@@ -386,7 +384,7 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
             RadialMenuView.Item(RadialAction.SMALLER, getString(R.string.action_smaller), R.drawable.ic_smaller),
             RadialMenuView.Item(RadialAction.OFF, getString(R.string.action_off), R.drawable.ic_off),
         )
-        val menuColor = runCatching { android.graphics.Color.parseColor(settings.menuColor) }.getOrDefault(android.graphics.Color.parseColor("#FF7043"))
+        val menuColor = runCatching { android.graphics.Color.parseColor(settings.menuColor) }.getOrDefault(android.graphics.Color.parseColor("#FF9800"))
         val view = RadialMenuView(this, cx, cy, items, menuColor)
 
         val menuParams = overlayParams(
@@ -615,7 +613,7 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
 
 
     companion object {
-        private const val CHANNEL_ID = "companion_overlay"
+        private const val CHANNEL_ID = "vtuber_overlay"
         private const val NOTIF_ID = 1
         private const val TOUCH_SLOP = 12f
         private const val TICK_WALK_MS = 33L

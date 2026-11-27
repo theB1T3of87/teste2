@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Fox Girl Supremacy</string>
-    <string name="notif_channel_name">Companion</string>
-    <string name="notif_title">Your fox girl is here</string>
-    <string name="notif_text">She is hanging out over your apps.</string>
-    <string name="header_subtitle">Your companion, floating above your apps.</string>
+    <string name="notif_channel_name">VTuber</string>
+    <string name="notif_title">Your VTuber is here</string>
+    <string name="notif_text">They are hanging out above your apps.</string>
+    <string name="header_subtitle">Your VTuber, floating above your apps.</string>
     <string name="card_state_title">Presence</string>
-    <string name="switch_companion">Companion enabled</string>
-    <string name="switch_companion_sub">Show her over other apps</string>
+    <string name="switch_companion">VTuber enabled</string>
+    <string name="switch_companion_sub">Show your VTuber over other apps</string>
     <string name="card_appearance_title">Appearance</string>
     <string name="label_size">Size</string>
-    <string name="switch_snow">Snow fox</string>
-    <string name="switch_snow_sub">Icy theme, white fur</string>
     <string name="label_model">Model</string>
     <string name="import_model">Import model</string>
     <string name="import_progress">Importing…</string>
@@ -21,20 +19,20 @@
     <string name="anim_open">View animations</string>
     <string name="card_anim_title">Animations</string>
     <string name="anim_card_hint">Tap a name to preview an animation; assign it to an action (weight = frequency).</string>
-    <string name="anim_hint">Tap an animation to preview it on your companion.</string>
+    <string name="anim_hint">Tap an animation to preview it on your VTuber.</string>
     <string name="anim_motions">Motions</string>
     <string name="anim_expressions">Expressions</string>
     <string name="anim_empty">This model has no motions or expressions (but it can still breathe and blink).</string>
     <string name="anim_none">No model selected.</string>
     <string name="card_behavior_title">Behavior</string>
     <string name="switch_reactions">Touch reactions</string>
-    <string name="switch_reactions_sub">She reacts when you touch her</string>
+    <string name="switch_reactions_sub">They react when you touch them</string>
     <string name="switch_animations">Animations</string>
     <string name="switch_animations_sub">Idle breathing</string>
     <string name="switch_face_tracking">Face tracking</string>
-    <string name="switch_face_tracking_sub">Your companion follows your head and eye movements (front camera)</string>
+    <string name="switch_face_tracking_sub">They follow your head and eye movements using the front camera</string>
     <string name="switch_wander">Wandering</string>
-    <string name="switch_wander_sub">She walks around near the bottom of the screen</string>
+    <string name="switch_wander_sub">They move around near the bottom of the screen</string>
     <string name="perm_overlay">Display over other apps</string>
     <string name="perm_notif">Notifications</string>
     <string name="perm_granted">granted</string>
@@ -47,9 +45,9 @@
     <string name="action_off">Turn off</string>
     <string name="action_bigger">Bigger</string>
     <string name="action_smaller">Smaller</string>
-    <string name="menu_color_title">Menu color</string>
+    <string name="menu_color_title">App and menu color</string>
     <string name="camera_permission_denied">Camera permission denied; face tracking is disabled.</string>
     <string-array name="chat_lines">
-        <item>Hey there!</item><item>What are you up to?</item><item>I\'m a little hungry…</item><item>Pet me?</item><item>Hehe~</item><item>I\'m watching over you.</item><item>Wanna play?</item><item>I missed you.</item><item>*wags her tail*</item><item>You\'re still here?</item>
+        <item>Hey there!</item><item>What are you up to?</item><item>I\'m a little hungry…</item><item>Pet me?</item><item>Hehe~</item><item>I\'m here with you.</item><item>Wanna play?</item><item>I missed you.</item><item>*wags their tail*</item><item>You\'re still here?</item>
     </string-array>
 </resources>

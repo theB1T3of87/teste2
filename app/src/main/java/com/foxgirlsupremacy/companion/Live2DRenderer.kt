@@ -49,7 +49,7 @@ class Live2DRenderer(
         } else {
             NativeCubismBridge.nativeSetFaceTrackingData(
                 true, data.angleX, data.angleY, data.angleZ,
-                data.eyeLOpen, data.eyeROpen, data.mouthForm, data.mouthOpen, data.faceX, data.faceY,
+                data.eyeLOpen, data.eyeROpen, data.mouthForm, data.mouthOpen, data.gazeX, data.gazeY,
             )
         }
     }
@@ -57,7 +57,6 @@ class Live2DRenderer(
     override fun setScale(scale: Float) = Unit
     override fun setAnimationsEnabled(enabled: Boolean) = Unit
     override fun setFacing(facing: Int) = Unit
-    override fun setSnowFox(snow: Boolean) = Unit
     override fun update(dtMillis: Long) = Unit
 
     override fun dispose() {

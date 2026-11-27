@@ -3,157 +3,357 @@ package com.foxgirlsupremacy.companion
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.Matrix
+import android.os.SystemClock
+import android.util.Log
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
-import android.os.SystemClock
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.face.Face
-import com.google.mlkit.vision.face.FaceDetection
-import com.google.mlkit.vision.face.FaceDetector
-import com.google.mlkit.vision.face.FaceDetectorOptions
-import com.google.mlkit.vision.face.FaceContour
+import com.google.mediapipe.framework.image.BitmapImageBuilder
+import com.google.mediapipe.framework.image.MPImage
+import com.google.mediapipe.tasks.core.BaseOptions
+import com.google.mediapipe.tasks.vision.core.RunningMode
+import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
+import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.atan2
+import kotlin.math.sqrt
 
-/** CameraX + ML Kit adapter. Frames are processed on-device and never persisted. */
+/**
+ * Real-time Face Landmarker adapter.
+ *
+ * The input image is rotated to its upright sensor orientation but is NOT mirrored.
+ * MediaPipe's Left/Right blendshapes describe the subject, and mirroring would swap them.
+ */
 class FaceTrackingController(
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner,
     private val onTracking: (FaceTrackingData?) -> Unit,
 ) {
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
-    private val detector: FaceDetector = FaceDetection.getClient(
-        FaceDetectorOptions.Builder()
-            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
-            .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
-            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
-            .setContourMode(FaceDetectorOptions.CONTOUR_MODE_ALL)
-            .setMinFaceSize(0.12f)
-            .build(),
-    )
+    private val mainExecutor = ContextCompat.getMainExecutor(context)
+    private val inferenceInFlight = AtomicBoolean(false)
+
     @Volatile private var stopped = false
-    private var cameraProvider: ProcessCameraProvider? = null
+    @Volatile private var landmarker: FaceLandmarker? = null
+    @Volatile private var cameraProvider: ProcessCameraProvider? = null
     @Volatile private var smoothedTrackingData: FaceTrackingData? = null
-    private var lastValidTrackingAtMs = 0L
+    @Volatile private var lastFaceAtMs = 0L
+    private var lastTimestampMs = 0L
 
     fun start() {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return
+        if (stopped || ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            publishTracking(null)
+            return
+        }
+
         val providerFuture = ProcessCameraProvider.getInstance(context)
-        providerFuture.addListener({
-            if (stopped) return@addListener
+        cameraExecutor.execute {
             try {
-                val provider = providerFuture.get()
-                cameraProvider = provider
-                val analysis = ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .setTargetResolution(android.util.Size(640, 480))
+                val options = FaceLandmarker.FaceLandmarkerOptions.builder()
+                    .setBaseOptions(
+                        BaseOptions.builder()
+                            .setModelAssetPath("face_landmarker.task")
+                            .build(),
+                    )
+                    .setRunningMode(RunningMode.LIVE_STREAM)
+                    .setNumFaces(1)
+                    .setMinFaceDetectionConfidence(0.55f)
+                    .setMinFacePresenceConfidence(0.55f)
+                    .setMinTrackingConfidence(0.55f)
+                    .setOutputFaceBlendshapes(true)
+                    .setOutputFacialTransformationMatrixes(true)
+                    .setResultListener { result, input ->
+                        try {
+                            if (!stopped) publishTracking(result.toTrackingData())
+                        } catch (error: Exception) {
+                            Log.e(TAG, "Could not map Face Landmarker result", error)
+                            publishTracking(null)
+                        } finally {
+                            input.close()
+                            inferenceInFlight.set(false)
+                        }
+                    }
+                    .setErrorListener { error ->
+                        Log.e(TAG, "Face Landmarker failed", error)
+                        inferenceInFlight.set(false)
+                        if (!stopped) publishTracking(null)
+                    }
                     .build()
-                analysis.setAnalyzer(cameraExecutor, ::analyze)
-                provider.unbindAll()
-                provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_FRONT_CAMERA, analysis)
-            } catch (_: Exception) {
-                onTracking(null)
+
+                val created = FaceLandmarker.createFromOptions(context, options)
+                if (stopped) {
+                    created.close()
+                    return@execute
+                }
+                landmarker = created
+
+                providerFuture.addListener({
+                    if (stopped) return@addListener
+                    try {
+                        val provider = providerFuture.get()
+                        cameraProvider = provider
+                        val analysis = ImageAnalysis.Builder()
+                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                            .setTargetResolution(android.util.Size(640, 480))
+                            .build()
+                        analysis.setAnalyzer(cameraExecutor, ::analyze)
+                        provider.unbindAll()
+                        provider.bindToLifecycle(
+                            lifecycleOwner,
+                            CameraSelector.DEFAULT_FRONT_CAMERA,
+                            analysis,
+                        )
+                    } catch (error: Exception) {
+                        Log.e(TAG, "Could not bind front camera", error)
+                        publishTracking(null)
+                    }
+                }, mainExecutor)
+            } catch (error: Exception) {
+                Log.e(TAG, "Could not initialize Face Landmarker", error)
+                mainExecutor.execute { if (!stopped) publishTracking(null) }
             }
-        }, ContextCompat.getMainExecutor(context))
+        }
     }
 
     private fun analyze(proxy: ImageProxy) {
-        val mediaImage = proxy.image
-        if (mediaImage == null || stopped) {
+        if (stopped || !inferenceInFlight.compareAndSet(false, true)) {
             proxy.close()
             return
         }
-        val input = InputImage.fromMediaImage(mediaImage, proxy.imageInfo.rotationDegrees)
-        detector.process(input)
-            .addOnSuccessListener { faces ->
-                val face = faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
-                publishTracking(face?.toTrackingData(input.width, input.height))
+        var mpImage: MPImage? = null
+        try {
+            val bitmap = proxy.toUprightBitmap()
+            mpImage = BitmapImageBuilder(bitmap).build()
+            val now = SystemClock.uptimeMillis()
+            val timestamp = maxOf(now, lastTimestampMs + 1L)
+            lastTimestampMs = timestamp
+            val activeLandmarker = landmarker
+            if (activeLandmarker == null) {
+                inferenceInFlight.set(false)
+                mpImage.close()
+                mpImage = null
+                publishTracking(null)
+            } else {
+                activeLandmarker.detectAsync(mpImage, timestamp)
+                // The result listener closes the MPImage when asynchronous inference completes.
+                mpImage = null
             }
-            .addOnFailureListener { publishTracking(null) }
-            .addOnCompleteListener { proxy.close() }
+        } catch (error: Exception) {
+            Log.e(TAG, "Could not submit camera frame", error)
+            mpImage?.close()
+            inferenceInFlight.set(false)
+            publishTracking(null)
+        } finally {
+            proxy.close()
+        }
     }
 
     fun stop() {
+        if (stopped) return
         stopped = true
         cameraProvider?.unbindAll()
-        detector.close()
+        cameraProvider = null
+        landmarker?.close()
+        landmarker = null
         cameraExecutor.shutdown()
         smoothedTrackingData = null
-        lastValidTrackingAtMs = 0L
+        lastFaceAtMs = 0L
         onTracking(null)
     }
 
-    /** Smooth frame-to-frame detector noise without making blinks feel sluggish. */
+    /**
+     * Keep the native tracking switch active through short detector dropouts. Otherwise
+     * Cubism's idle motion starts moving the head as soon as one frame is missed.
+     */
+    @Synchronized
     private fun publishTracking(data: FaceTrackingData?) {
-        if (data == null) {
+        val now = SystemClock.uptimeMillis()
+        val target = if (data == null) {
             val previous = smoothedTrackingData
-            // Brief detector dropouts should not hand control back to idle animation.
-            if (previous != null && SystemClock.uptimeMillis() - lastValidTrackingAtMs < 350L) {
+            if (previous != null && now - lastFaceAtMs < LOST_FACE_HOLD_MS) {
                 onTracking(previous)
                 return
             }
-            smoothedTrackingData = null
-            onTracking(null)
-            return
+            // Neutral-but-enabled data prevents idle animation from taking control while
+            // the camera and Face Landmarker are still running but no face is detected.
+            FaceTrackingData.NEUTRAL
+        } else {
+            lastFaceAtMs = now
+            data
         }
-        lastValidTrackingAtMs = SystemClock.uptimeMillis()
+
         val previous = smoothedTrackingData
-        val smoothed = if (previous == null) data else FaceTrackingData(
-            angleX = lerp(previous.angleX, data.angleX, 0.35f),
-            angleY = lerp(previous.angleY, data.angleY, 0.35f),
-            angleZ = lerp(previous.angleZ, data.angleZ, 0.35f),
-            eyeLOpen = lerp(previous.eyeLOpen, data.eyeLOpen, 0.65f),
-            eyeROpen = lerp(previous.eyeROpen, data.eyeROpen, 0.65f),
-            mouthForm = lerp(previous.mouthForm, data.mouthForm, 0.35f),
-            mouthOpen = lerp(previous.mouthOpen, data.mouthOpen, 0.55f),
-            faceX = lerp(previous.faceX, data.faceX, 0.35f),
-            faceY = lerp(previous.faceY, data.faceY, 0.35f),
+        val filtered = if (previous == null) target else FaceTrackingData(
+            angleX = lerp(previous.angleX, target.angleX, 0.42f),
+            angleY = lerp(previous.angleY, target.angleY, 0.42f),
+            angleZ = lerp(previous.angleZ, target.angleZ, 0.42f),
+            eyeLOpen = smoothEye(previous.eyeLOpen, target.eyeLOpen),
+            eyeROpen = smoothEye(previous.eyeROpen, target.eyeROpen),
+            mouthForm = lerp(previous.mouthForm, target.mouthForm, 0.38f),
+            mouthOpen = lerp(previous.mouthOpen, target.mouthOpen, 0.62f),
+            gazeX = lerp(previous.gazeX, target.gazeX, 0.55f),
+            gazeY = lerp(previous.gazeY, target.gazeY, 0.55f),
         )
-        smoothedTrackingData = smoothed
-        onTracking(smoothed)
+        smoothedTrackingData = filtered
+        onTracking(filtered)
+    }
+
+    private fun smoothEye(previous: Float, target: Float): Float {
+        // Close quickly for a real blink, reopen smoothly, and ignore tiny score changes.
+        val stableTarget = if (target > 0.94f) 1f else target.coerceIn(0f, 1f)
+        val amount = if (stableTarget < previous) 0.78f else 0.46f
+        return lerp(previous, stableTarget, amount)
     }
 
     private fun lerp(from: Float, to: Float, amount: Float): Float =
         from + (to - from) * amount
 
-    private fun Face.toTrackingData(frameWidth: Int, frameHeight: Int): FaceTrackingData {
-        val box = boundingBox
-        val centerX = ((box.centerX() / frameWidth.toFloat()) * 2f - 1f).coerceIn(-1f, 1f)
-        val centerY = (1f - (box.centerY() / frameHeight.toFloat()) * 2f).coerceIn(-1f, 1f)
-        val upperLip = getContour(FaceContour.UPPER_LIP_BOTTOM)?.points.orEmpty()
-        val lowerLip = getContour(FaceContour.LOWER_LIP_TOP)?.points.orEmpty()
-        val upperY = upperLip.map { it.y }.average()
-        val lowerY = lowerLip.map { it.y }.average()
-        val mouthGap = if (upperLip.isNotEmpty() && lowerLip.isNotEmpty() && upperY.isFinite() && lowerY.isFinite()) {
-            (lowerY - upperY).coerceAtLeast(0.0).toFloat()
-        } else 0f
-        val mouthOpen = (mouthGap / box.height().coerceAtLeast(1) * 22f).coerceIn(0f, 1f)
+    private fun ImageProxy.toUprightBitmap(): Bitmap {
+        val plane = planes.first()
+        val buffer = plane.buffer
+        val width = width
+        val height = height
+        val rowStride = plane.rowStride
+        val pixelStride = plane.pixelStride
+        val pixels = IntArray(width * height)
+
+        for (y in 0 until height) {
+            val rowOffset = y * rowStride
+            for (x in 0 until width) {
+                val offset = rowOffset + x * pixelStride
+                val red = buffer.get(offset).toInt() and 0xFF
+                val green = buffer.get(offset + 1).toInt() and 0xFF
+                val blue = buffer.get(offset + 2).toInt() and 0xFF
+                val alpha = buffer.get(offset + 3).toInt() and 0xFF
+                pixels[y * width + x] = Color.argb(alpha, red, green, blue)
+            }
+        }
+
+        val source = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        source.setPixels(pixels, 0, width, 0, 0, width, height)
+        val rotation = imageInfo.rotationDegrees
+        if (rotation == 0) return source
+
+        val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
+        return Bitmap.createBitmap(source, 0, 0, width, height, matrix, true).also {
+            if (it !== source) source.recycle()
+        }
+    }
+
+    private fun FaceLandmarkerResult.toTrackingData(): FaceTrackingData? {
+        if (faceLandmarks().isEmpty()) return null
+
+        val categories = faceBlendshapes().orElse(emptyList()).firstOrNull().orEmpty()
+        val scores = categories.associate { it.categoryName() to it.score() }
+        fun score(name: String): Float = (scores[name] ?: 0f).coerceIn(0f, 1f)
+
+        val matrix = facialTransformationMatrixes().orElse(emptyList()).firstOrNull()
+        val (angleX, angleY, angleZ) = matrix?.toHeadAngles() ?: Triple(0f, 0f, 0f)
+
+        val blinkLeft = score("eyeBlinkLeft")
+        val blinkRight = score("eyeBlinkRight")
+        val eyeLOpen = (1f - ((blinkLeft - BLINK_DEAD_ZONE) / BLINK_RESPONSE_RANGE))
+            .coerceIn(0f, 1f)
+        val eyeROpen = (1f - ((blinkRight - BLINK_DEAD_ZONE) / BLINK_RESPONSE_RANGE))
+            .coerceIn(0f, 1f)
+
+        val jawOpen = score("jawOpen")
+        val mouthOpen = ((jawOpen - JAW_DEAD_ZONE) / JAW_RESPONSE_RANGE)
+            .coerceIn(0f, 1f)
+        val smile = score("mouthSmileLeft") + score("mouthSmileRight")
+        val frown = score("mouthFrownLeft") + score("mouthFrownRight")
+        val mouthForm = (smile - frown).coerceIn(-1f, 1f)
+
+        // MediaPipe's Left/Right labels are subject-relative. Convert horizontal gaze
+        // to the viewer's screen axis expected by Cubism's ParamEyeBallX.
+        val gazeTowardSubjectRight = (score("eyeLookInLeft") + score("eyeLookOutRight")) * 0.5f
+        val gazeTowardSubjectLeft = (score("eyeLookOutLeft") + score("eyeLookInRight")) * 0.5f
+        val gazeX = ((gazeTowardSubjectLeft - gazeTowardSubjectRight) * 1.8f).coerceIn(-1f, 1f)
+        val gazeY = (
+            (score("eyeLookUpLeft") + score("eyeLookUpRight")) -
+                (score("eyeLookDownLeft") + score("eyeLookDownRight"))
+            ) * 0.9f
         return FaceTrackingData(
-            angleX = (-headEulerAngleY).coerceIn(-30f, 30f),
-            angleY = (-headEulerAngleX).coerceIn(-25f, 25f),
-            angleZ = (-headEulerAngleZ).coerceIn(-30f, 30f),
-            eyeLOpen = leftEyeOpenProbability ?: 0.8f,
-            eyeROpen = rightEyeOpenProbability ?: 0.8f,
-            mouthForm = (smilingProbability ?: 0f).coerceIn(0f, 1f),
+            angleX = angleX,
+            angleY = angleY,
+            angleZ = angleZ,
+            eyeLOpen = eyeLOpen,
+            eyeROpen = eyeROpen,
+            mouthForm = mouthForm,
             mouthOpen = mouthOpen,
-            faceX = centerX,
-            faceY = centerY,
+            gazeX = gazeX.coerceIn(-1f, 1f),
+            gazeY = gazeY.coerceIn(-1f, 1f),
         )
+    }
+
+    /**
+     * MediaPipe returns a flat column-major 4x4 facial transform matrix.
+     * Extract Y-X-Z Euler angles from its upper-left 3x3 rotation matrix.
+     */
+    private fun FloatArray.toHeadAngles(): Triple<Float, Float, Float> {
+        if (size < 16) return Triple(0f, 0f, 0f)
+
+        val r00 = this[0]
+        val r10 = this[1]
+        val r20 = this[2]
+        val r21 = this[6]
+        val r22 = this[10]
+        val yaw = atan2(-r20, sqrt(r00 * r00 + r10 * r10))
+        val pitch = atan2(r21, r22)
+        val roll = atan2(r10, r00)
+        val radiansToDegrees = (180f / Math.PI.toFloat())
+
+        // Negative horizontal/vertical signs align camera movement with Cubism's
+        // standard screen-space directions; gains make small turns perceptible.
+        val angleX = (-yaw * radiansToDegrees * 1.35f).coerceIn(-30f, 30f)
+        val angleY = (-pitch * radiansToDegrees * 1.30f).coerceIn(-25f, 25f)
+        val angleZ = (-roll * radiansToDegrees * 1.15f).coerceIn(-30f, 30f)
+        return Triple(angleX, angleY, angleZ)
+    }
+
+    data class FaceTrackingData(
+        val angleX: Float,
+        val angleY: Float,
+        val angleZ: Float,
+        val eyeLOpen: Float,
+        val eyeROpen: Float,
+        val mouthForm: Float,
+        val mouthOpen: Float,
+        val gazeX: Float,
+        val gazeY: Float,
+    ) {
+        companion object {
+            val NEUTRAL = FaceTrackingData(
+                angleX = 0f,
+                angleY = 0f,
+                angleZ = 0f,
+                eyeLOpen = 1f,
+                eyeROpen = 1f,
+                mouthForm = 0f,
+                mouthOpen = 0f,
+                gazeX = 0f,
+                gazeY = 0f,
+            )
+        }
+    }
+
+    companion object {
+        private const val TAG = "VTuberFaceTracking"
+        private const val LOST_FACE_HOLD_MS = 650L
+        private const val BLINK_DEAD_ZONE = 0.10f
+        private const val BLINK_RESPONSE_RANGE = 0.62f
+        private const val JAW_DEAD_ZONE = 0.035f
+        private const val JAW_RESPONSE_RANGE = 0.45f
     }
 }
 
-data class FaceTrackingData(
-    val angleX: Float,
-    val angleY: Float,
-    val angleZ: Float,
-    val eyeLOpen: Float,
-    val eyeROpen: Float,
-    val mouthForm: Float,
-    val mouthOpen: Float,
-    val faceX: Float,
-    val faceY: Float,
-)
+typealias FaceTrackingData = FaceTrackingController.FaceTrackingData

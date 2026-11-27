@@ -23,7 +23,6 @@ interface CharacterRenderer {
 
     fun setFacing(facing: Int)
 
-    fun setSnowFox(snow: Boolean)
 
     fun update(dtMillis: Long)
 
@@ -41,7 +40,6 @@ class PlaceholderRenderer : CharacterRenderer {
     private var scale: Float = 1.0f
     private var animationsEnabled: Boolean = true
     private var facing: Int = 1
-    private var snow: Boolean = false
 
     override fun createView(context: Context): View =
         PlaceholderView(context).also {
@@ -49,7 +47,6 @@ class PlaceholderRenderer : CharacterRenderer {
             it.scale = scale
             it.animationsEnabled = animationsEnabled
             it.facing = facing
-            it.snow = snow
             view = it
         }
 
@@ -71,11 +68,6 @@ class PlaceholderRenderer : CharacterRenderer {
     override fun setFacing(facing: Int) {
         this.facing = facing
         view?.facing = facing
-    }
-
-    override fun setSnowFox(snow: Boolean) {
-        this.snow = snow
-        view?.snow = snow
     }
 
     override fun update(dtMillis: Long) {
@@ -130,12 +122,6 @@ class PlaceholderRenderer : CharacterRenderer {
                 invalidate()
             }
 
-        var snow: Boolean = false
-            set(value) {
-                field = value
-                invalidate()
-            }
-
         override fun onAttachedToWindow() {
             super.onAttachedToWindow()
             applyAnimationState()
@@ -167,7 +153,7 @@ class PlaceholderRenderer : CharacterRenderer {
             val r = (width / 2f - 8f) * breath
 
             fill.color = bodyColor()
-            stroke.color = if (snow) Color.parseColor("#4FC3F7") else Color.WHITE
+            stroke.color = Color.WHITE
             canvas.drawCircle(cx, cy, r, fill)
             canvas.drawCircle(cx, cy, r, stroke)
 
@@ -183,22 +169,12 @@ class PlaceholderRenderer : CharacterRenderer {
             canvas.drawPath(nosePath, nosePaint)
         }
 
-        private fun bodyColor(): Int = if (snow) {
-            when (state) {
-                CharacterState.IDLE -> Color.parseColor("#ECF6FB")
-                CharacterState.WALK -> Color.parseColor("#CDE9F7")
-                CharacterState.PET -> Color.parseColor("#B39DDB")
-                CharacterState.EAT -> Color.parseColor("#A5D6A7")
-                CharacterState.TALK -> Color.parseColor("#90CAF9")
-            }
-        } else {
-            when (state) {
-                CharacterState.IDLE -> Color.parseColor("#FF7043")
-                CharacterState.WALK -> Color.parseColor("#FFA726")
-                CharacterState.PET -> Color.parseColor("#EC407A")
-                CharacterState.EAT -> Color.parseColor("#66BB6A")
-                CharacterState.TALK -> Color.parseColor("#42A5F5")
-            }
+        private fun bodyColor(): Int = when (state) {
+            CharacterState.IDLE -> Color.parseColor("#FF9800")
+            CharacterState.WALK -> Color.parseColor("#FFB74D")
+            CharacterState.PET -> Color.parseColor("#E91E63")
+            CharacterState.EAT -> Color.parseColor("#66BB6A")
+            CharacterState.TALK -> Color.parseColor("#42A5F5")
         }
     }
 }

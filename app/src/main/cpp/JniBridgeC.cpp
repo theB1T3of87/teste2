@@ -201,13 +201,13 @@ extern "C"
 
     JNIEXPORT void JNICALL
     Java_com_foxgirlsupremacy_companion_NativeCubismBridge_nativeSetFaceTrackingData(JNIEnv *env, jclass type, jboolean enabled,
-        jfloat angleX, jfloat angleY, jfloat angleZ, jfloat eyeLOpen, jfloat eyeROpen, jfloat mouthForm, jfloat mouthOpen, jfloat faceX, jfloat faceY)
+        jfloat angleX, jfloat angleY, jfloat angleZ, jfloat eyeLOpen, jfloat eyeROpen, jfloat mouthForm, jfloat mouthOpen, jfloat gazeX, jfloat gazeY)
     {
         std::lock_guard<std::mutex> lock(g_faceTrackingMutex);
         g_faceTracking.enabled = enabled == JNI_TRUE;
         g_faceTracking.angleX = angleX; g_faceTracking.angleY = angleY; g_faceTracking.angleZ = angleZ;
         g_faceTracking.eyeLOpen = eyeLOpen; g_faceTracking.eyeROpen = eyeROpen; g_faceTracking.mouthForm = mouthForm; g_faceTracking.mouthOpen = mouthOpen;
-        g_faceTracking.faceX = faceX; g_faceTracking.faceY = faceY;
+        g_faceTracking.gazeX = gazeX; g_faceTracking.gazeY = gazeY;
     }
 
     JNIEXPORT void JNICALL
