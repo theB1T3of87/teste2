@@ -22,6 +22,7 @@ import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.atan2
 import kotlin.math.sqrt
 
@@ -38,6 +39,7 @@ class FaceTrackingController(
 ) {
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val mainExecutor = ContextCompat.getMainExecutor(context)
+    private val inferenceInFlight = AtomicBoolean(false)
 
     @Volatile private var stopped = false
     @Volatile private var landmarker: FaceLandmarker? = null
@@ -76,10 +78,12 @@ class FaceTrackingController(
                             publishTracking(null)
                         } finally {
                             input.close()
+                            inferenceInFlight.set(false)
                         }
                     }
                     .setErrorListener { error ->
                         Log.e(TAG, "Face Landmarker failed", error)
+                        inferenceInFlight.set(false)
                         if (!stopped) publishTracking(null)
                     }
                     .build()
@@ -121,9 +125,12 @@ class FaceTrackingController(
     }
 
     private fun analyze(proxy: ImageProxy) {
+        if (stopped || !inferenceInFlight.compareAndSet(false, true)) {
+            proxy.close()
+            return
+        }
         var mpImage: MPImage? = null
         try {
-            if (stopped) return
             val bitmap = proxy.toUprightBitmap()
             mpImage = BitmapImageBuilder(bitmap).build()
             val now = SystemClock.uptimeMillis()
@@ -131,6 +138,7 @@ class FaceTrackingController(
             lastTimestampMs = timestamp
             val activeLandmarker = landmarker
             if (activeLandmarker == null) {
+                inferenceInFlight.set(false)
                 mpImage.close()
                 mpImage = null
                 publishTracking(null)
@@ -142,6 +150,7 @@ class FaceTrackingController(
         } catch (error: Exception) {
             Log.e(TAG, "Could not submit camera frame", error)
             mpImage?.close()
+            inferenceInFlight.set(false)
             publishTracking(null)
         } finally {
             proxy.close()
@@ -252,13 +261,13 @@ class FaceTrackingController(
 
         val blinkLeft = score("eyeBlinkLeft")
         val blinkRight = score("eyeBlinkRight")
-        val eyeLOpen = (1f - ((blinkLeft - BLINK_DEAD_ZONE) / (1f - BLINK_DEAD_ZONE)))
+        val eyeLOpen = (1f - ((blinkLeft - BLINK_DEAD_ZONE) / BLINK_RESPONSE_RANGE))
             .coerceIn(0f, 1f)
-        val eyeROpen = (1f - ((blinkRight - BLINK_DEAD_ZONE) / (1f - BLINK_DEAD_ZONE)))
+        val eyeROpen = (1f - ((blinkRight - BLINK_DEAD_ZONE) / BLINK_RESPONSE_RANGE))
             .coerceIn(0f, 1f)
 
         val jawOpen = score("jawOpen")
-        val mouthOpen = ((jawOpen - JAW_DEAD_ZONE) / (1f - JAW_DEAD_ZONE))
+        val mouthOpen = ((jawOpen - JAW_DEAD_ZONE) / JAW_RESPONSE_RANGE)
             .coerceIn(0f, 1f)
         val smile = score("mouthSmileLeft") + score("mouthSmileRight")
         val frown = score("mouthFrownLeft") + score("mouthFrownRight")
@@ -341,7 +350,9 @@ class FaceTrackingController(
         private const val TAG = "VTuberFaceTracking"
         private const val LOST_FACE_HOLD_MS = 650L
         private const val BLINK_DEAD_ZONE = 0.10f
+        private const val BLINK_RESPONSE_RANGE = 0.62f
         private const val JAW_DEAD_ZONE = 0.035f
+        private const val JAW_RESPONSE_RANGE = 0.45f
     }
 }
 
