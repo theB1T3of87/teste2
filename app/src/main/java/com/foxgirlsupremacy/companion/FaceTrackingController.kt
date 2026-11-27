@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.graphics.Matrix
 import android.os.SystemClock
 import android.util.Log
+import android.view.WindowManager
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -48,6 +49,7 @@ class FaceTrackingController(
     @Volatile private var lastFaceAtMs = 0L
     // Reference pose captured from the first valid face frame; tracking is relative to it.
     @Volatile private var neutralHeadRotation: FloatArray? = null
+    private var lastPoseLogAtMs = 0L
     private var lastTimestampMs = 0L
 
     fun start() {
@@ -102,7 +104,13 @@ class FaceTrackingController(
                     try {
                         val provider = providerFuture.get()
                         cameraProvider = provider
+                        // Pin CameraX's target to the current display orientation. CameraX
+                        // reports the remaining sensor-to-target rotation in ImageInfo.
+                        @Suppress("DEPRECATION")
+                        val targetRotation = (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager)
+                            .defaultDisplay.rotation
                         val analysis = ImageAnalysis.Builder()
+                            .setTargetRotation(targetRotation)
                             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                             .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                             .setTargetResolution(android.util.Size(640, 480))
@@ -114,6 +122,7 @@ class FaceTrackingController(
                             CameraSelector.DEFAULT_FRONT_CAMERA,
                             analysis,
                         )
+                        Log.i(TAG, "CameraX bound: front camera, targetRotation=$targetRotation, format=RGBA_8888")
                     } catch (error: Exception) {
                         Log.e(TAG, "Could not bind front camera", error)
                         publishTracking(null)
@@ -253,14 +262,32 @@ class FaceTrackingController(
     }
 
     private fun FaceLandmarkerResult.toTrackingData(): FaceTrackingData? {
-        if (faceLandmarks().isEmpty()) return null
+        val detectedFaces = faceLandmarks()
+        if (detectedFaces.isEmpty()) {
+            val now = SystemClock.uptimeMillis()
+            if (now - lastPoseLogAtMs >= DIAGNOSTIC_LOG_INTERVAL_MS) {
+                Log.w(TAG, "MediaPipe callback has no face landmarks")
+                lastPoseLogAtMs = now
+            }
+            return null
+        }
 
         val categories = faceBlendshapes().orElse(emptyList()).firstOrNull().orEmpty()
         val scores = categories.associate { it.categoryName() to it.score() }
         fun score(name: String): Float = (scores[name] ?: 0f).coerceIn(0f, 1f)
 
-        val matrix = facialTransformationMatrixes().orElse(emptyList()).firstOrNull()
+        val matrices = facialTransformationMatrixes().orElse(emptyList())
+        val matrix = matrices.firstOrNull()
         val (angleX, angleY, angleZ) = matrix?.toHeadAngles() ?: Triple(0f, 0f, 0f)
+        val now = SystemClock.uptimeMillis()
+        if (now - lastPoseLogAtMs >= DIAGNOSTIC_LOG_INTERVAL_MS) {
+            if (matrix == null) {
+                Log.e(TAG, "Face detected but pose matrix is MISSING; faces=${detectedFaces.size}, landmarks=${detectedFaces.first().size}, blendshapes=${categories.size}")
+            } else {
+                Log.i(TAG, "MediaPipe pose: matrixSize=${matrix.size}, raw=${matrix.contentToString()}, angles=($angleX,$angleY,$angleZ), blendshapes=${categories.size}")
+            }
+            lastPoseLogAtMs = now
+        }
 
         val blinkLeft = score("eyeBlinkLeft")
         val blinkRight = score("eyeBlinkRight")
@@ -345,7 +372,10 @@ class FaceTrackingController(
         val radiansToDegrees = 180f / Math.PI.toFloat()
 
         // Keep the established screen-space sign convention and gains.
-        val angleX = (-yaw * radiansToDegrees * 1.35f).coerceIn(-30f, 30f)
+        // MediaPipe's canonical face looks along +Z. A positive Y-axis yaw
+        // rotates the nose toward +X (screen-right), which is Cubism's positive
+        // ParamAngleX direction. Do not negate this axis.
+        val angleX = (yaw * radiansToDegrees * 1.35f).coerceIn(-30f, 30f)
         val angleY = (-pitch * radiansToDegrees * 1.30f).coerceIn(-25f, 25f)
         val angleZ = (-roll * radiansToDegrees * 1.15f).coerceIn(-30f, 30f)
         return Triple(angleX, angleY, angleZ)
@@ -410,6 +440,7 @@ class FaceTrackingController(
     companion object {
         private const val TAG = "VTuberFaceTracking"
         private const val LOST_FACE_HOLD_MS = 650L
+        private const val DIAGNOSTIC_LOG_INTERVAL_MS = 1_000L
         private const val BLINK_DEAD_ZONE = 0.10f
         private const val BLINK_RESPONSE_RANGE = 0.62f
         private const val JAW_DEAD_ZONE = 0.035f
