@@ -32,7 +32,6 @@ class FaceTrackingController(
             .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
             .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
             .setContourMode(FaceDetectorOptions.CONTOUR_MODE_ALL)
-            .enableTracking()
             .setMinFaceSize(0.12f)
             .build(),
     )
