@@ -50,6 +50,6 @@
     <string name="menu_color_title">Menu color</string>
     <string name="camera_permission_denied">Camera permission denied; face tracking is disabled.</string>
     <string-array name="chat_lines">
-        <item>Hey there!</item><item>What are you up to?</item><item>I'm a little hungry…</item><item>Pet me?</item><item>Hehe~</item><item>I'm watching over you.</item><item>Wanna play?</item><item>I missed you.</item><item>*wags her tail*</item><item>You're still here?</item>
+        <item>Hey there!</item><item>What are you up to?</item><item>I\'m a little hungry…</item><item>Pet me?</item><item>Hehe~</item><item>I\'m watching over you.</item><item>Wanna play?</item><item>I missed you.</item><item>*wags her tail*</item><item>You\'re still here?</item>
     </string-array>
 </resources>
