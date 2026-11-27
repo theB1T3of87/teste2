@@ -95,7 +95,7 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
 
     private val idleAnimTick = object : Runnable {
         override fun run() {
-            if (!userInteracting && !petModeActive && !controller.isWalking) {
+            if (!userInteracting && !petModeActive && !controller.isWalking && !settings.faceTrackingEnabled) {
                 val anims = animMapping.animsForAction("IDLE")
                 if (anims.isNotEmpty()) playAnim(weightedPick(anims))
             }
