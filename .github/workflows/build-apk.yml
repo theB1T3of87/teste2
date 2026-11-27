@@ -2,7 +2,7 @@ name: Build FoxGirlSupremacy APK
 
 on:
   push:
-    branches: [main, fix/mediapipe-vtuber-theme]
+    branches: [main, fix/mediapipe-vtuber-theme, fix/face-pose-matrix]
   workflow_dispatch:
 
 permissions:
