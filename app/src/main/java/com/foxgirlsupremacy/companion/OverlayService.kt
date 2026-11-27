@@ -5,6 +5,9 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -23,14 +26,17 @@ import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleService
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.random.Random
 
-class OverlayService : Service(), SharedPreferences.OnSharedPreferenceChangeListener {
+class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceChangeListener {
 
     private lateinit var windowManager: WindowManager
     private lateinit var renderer: CharacterRenderer
+    private var faceTrackingController: FaceTrackingController? = null
     private lateinit var settings: Settings
     private lateinit var animMapping: AnimMapping
     private lateinit var controller: CompanionController
@@ -80,6 +86,7 @@ class OverlayService : Service(), SharedPreferences.OnSharedPreferenceChangeList
         startForegroundNotification()
         addOverlay()
         applySettings()
+        updateFaceTracking()
         settings.registerListener(this)
 
         lastTick = SystemClock.uptimeMillis()
@@ -180,7 +187,17 @@ class OverlayService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             .setOngoing(true)
             .build()
 
-        startForeground(NOTIF_ID, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            if (settings.faceTrackingEnabled && ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            }
+            startForeground(NOTIF_ID, notification, types)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && settings.faceTrackingEnabled && ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA)
+        } else {
+            startForeground(NOTIF_ID, notification)
+        }
     }
 
     private fun addOverlay(forcedX: Int? = null, forcedY: Int? = null) {
@@ -265,6 +282,8 @@ class OverlayService : Service(), SharedPreferences.OnSharedPreferenceChangeList
         removeSnack()
         removeBubble()
         hideLoading()
+        faceTrackingController?.stop()
+        faceTrackingController = null
         renderer.dispose()
         overlayView?.let { runCatching { windowManager.removeView(it) } }
         overlayView = null
@@ -273,6 +292,20 @@ class OverlayService : Service(), SharedPreferences.OnSharedPreferenceChangeList
         recomputeSpriteSize()
         addOverlay(keepX, keepY)
         applySettings()
+        updateFaceTracking()
+    }
+
+    private fun updateFaceTracking() {
+        faceTrackingController?.stop()
+        faceTrackingController = null
+        val liveRenderer = renderer as? Live2DRenderer
+        if (!settings.faceTrackingEnabled || ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED || liveRenderer == null) {
+            liveRenderer?.setFaceTrackingData(null)
+            return
+        }
+        faceTrackingController = FaceTrackingController(this, this) { data ->
+            liveRenderer.setFaceTrackingData(data)
+        }.also { it.start() }
     }
 
     private fun applySettings() {
@@ -297,6 +330,7 @@ class OverlayService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             Settings.KEY_ANIMATIONS -> renderer.setAnimationsEnabled(settings.animationsEnabled)
             Settings.KEY_SNOW -> renderer.setSnowFox(settings.snowFox)
             Settings.KEY_WANDER -> controller.wanderEnabled = settings.wanderEnabled
+            Settings.KEY_FACE_TRACKING -> { startForegroundNotification(); updateFaceTracking() }
             Settings.KEY_MODEL -> rebuildOverlay()
         }
 
@@ -613,6 +647,8 @@ class OverlayService : Service(), SharedPreferences.OnSharedPreferenceChangeList
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         settings.unregisterListener(this)
+        faceTrackingController?.stop()
+        faceTrackingController = null
         settings.savePosition(params.x, params.y)
         removeSnack()
         removeBubble()
@@ -624,7 +660,7 @@ class OverlayService : Service(), SharedPreferences.OnSharedPreferenceChangeList
         super.onDestroy()
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onBind(intent: Intent?): IBinder? = super.onBind(intent)
 
     companion object {
         private const val CHANNEL_ID = "companion_overlay"

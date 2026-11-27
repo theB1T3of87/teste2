@@ -33,6 +33,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var companionSwitch: MaterialSwitch
     private lateinit var reactionsSwitch: MaterialSwitch
     private lateinit var wanderSwitch: MaterialSwitch
+    private lateinit var faceTrackingSwitch: MaterialSwitch
     private lateinit var snowSwitch: MaterialSwitch
     private lateinit var modelGroup: ChipGroup
     private lateinit var animContainer: LinearLayout
@@ -51,6 +52,13 @@ class MainActivity : AppCompatActivity() {
 
             requestMissingPermissions()
         }
+
+    private val cameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        settings.faceTrackingEnabled = granted
+        faceTrackingSwitch.isChecked = granted
+        if (!granted) Toast.makeText(this, "Permissão da câmera negada; o face tracking ficará desativado.", Toast.LENGTH_LONG).show()
+        if (settings.companionEnabled && permissionsGranted()) OverlayService.start(this)
+    }
 
     private val importLauncher =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -77,6 +85,7 @@ class MainActivity : AppCompatActivity() {
         companionSwitch = findViewById(R.id.switch_companion)
         reactionsSwitch = findViewById(R.id.switch_reactions)
         wanderSwitch = findViewById(R.id.switch_wander)
+        faceTrackingSwitch = findViewById(R.id.switch_face_tracking)
         snowSwitch = findViewById(R.id.switch_snow)
         modelGroup = findViewById(R.id.model_group)
         findViewById<MaterialButton>(R.id.button_import).setOnClickListener {
@@ -105,6 +114,7 @@ class MainActivity : AppCompatActivity() {
         companionSwitch.isChecked = settings.companionEnabled
         reactionsSwitch.isChecked = settings.reactionsEnabled
         wanderSwitch.isChecked = settings.wanderEnabled
+        faceTrackingSwitch.isChecked = settings.faceTrackingEnabled
         snowSwitch.isChecked = settings.snowFox
         sizeSlider.value = settings.scale.coerceIn(0.5f, 5.0f)
         updateSizeLabel(settings.scale)
@@ -126,6 +136,15 @@ class MainActivity : AppCompatActivity() {
 
         wanderSwitch.setOnCheckedChangeListener { _, checked ->
             settings.wanderEnabled = checked
+        }
+
+        faceTrackingSwitch.setOnCheckedChangeListener { _, checked ->
+            if (checked && ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            } else {
+                settings.faceTrackingEnabled = checked
+                if (settings.companionEnabled && permissionsGranted()) OverlayService.start(this)
+            }
         }
 
         snowSwitch.setOnCheckedChangeListener { _, checked ->

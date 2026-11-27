@@ -38,6 +38,20 @@ Par-dessus n'importe quelle app — là elle squatte la calculatrice, l'horloge 
 > Modèle par défaut : Hiyori (sample officiel Live2D). Oui, c'est censé être une
 > renarde. Non, ce n'en est pas une. Voir plus bas.
 
+## Face tracking (nouveau)
+
+Dans **Comportement → Face tracking**, active la caméra frontale. L'application
+utilise CameraX et ML Kit en local pour suivre l'orientation de la tête, la
+position du visage, l'ouverture des yeux et le sourire, puis applique ces valeurs
+aux paramètres standard du modèle Cubism (`ParamAngleX/Y/Z`, `ParamEyeLOpen`,
+`ParamEyeROpen`, `ParamEyeBallX/Y`, `ParamMouthForm`). Les images ne sont ni
+sauvegardées ni envoyées à un serveur. Le suivi fonctionne seulement si le modèle
+expose ces paramètres; le sourire est utilisé comme forme de bouche, pas comme
+mesure fiable de l'ouverture de la mâchoire.
+
+La caméra est facultative : sans autorisation, le compagnon continue à fonctionner
+sans suivi. Le suivi s'arrête quand on désactive le commutateur ou le service.
+
 ## Ce que ça fait (oui, ça tourne)
 
 - Overlay par-dessus n'importe quelle app (`SYSTEM_ALERT_WINDOW`).
@@ -58,34 +72,19 @@ Par-dessus n'importe quelle app — là elle squatte la calculatrice, l'horloge 
 
 ## Si tu veux quand même le lancer
 
-Il te faut un JDK 17, Android Studio (AGP 8.7) et un tel/émulateur Android 8.0+.
+Il te faut un JDK 17+, Android Studio, Android SDK Platform 35, NDK 26.3.11579264 et CMake 3.22.1.
 
-Deux morceaux ne sont **pas** dans le repo — pas par flemme, par licence :
+Cette branche utilise maintenant le **Cubism SDK for Native 5 R5** via JNI (C++/OpenGL ES 2). Le framework et les bibliothèques Core Android fournis dans le SDK envoyé sont placés sous `CubismSdkForNative-5-r.5/`. Le projet est configuré pour `arm64-v8a` et `x86_64`.
 
-**1. Le SDK Live2D.** Propriétaire, pas redistribuable. Tu le récupères toi-même
-sur <https://www.live2d.com/en/sdk/download/native/> (Cubism SDK for Java), tu le
-décompresses et tu le poses à la racine dans `CubismSdkForJava-5-r.5/`. Le projet
-attend le Framework dans `.../Framework/framework` et le Core dans
-`.../Core/android/Live2DCubismCore.aar`.
+Pour compiler :
 
-**2. Un modèle.** Il y en a déjà un : **Hiyori**, l'échantillon officiel Live2D
-(celui-là a le droit d'être redistribué), dans
-`app/src/main/assets/live2d/hiyori/`. Donc ça build direct. Tu veux le tien ? Tu
-le poses dans `app/src/main/assets/live2d/<id>/` (faut un `*.model3.json` dedans),
-ou tu l'importes depuis l'app.
-
-> ⚠️ Beaucoup de modèles Live2D « gratuits » sont **usage perso, pas de
-> redistribution**. N'ajoute au dépôt que ce que tu as le droit de partager. La
-> version publique de ce repo tourne exprès sur un modèle sample propre.
-
-Puis :
-
-```
+```bash
 ./gradlew assembleDebug
 ```
 
-Au premier lancement elle te demande l'autorisation « Affichage par-dessus les
-autres apps » (elle t'envoie dans les réglages système) et la permission de notif.
+Le modèle Hiyori est dans `app/src/main/assets/live2d/hiyori/`. Tu peux aussi importer tes propres modèles depuis l'application. Les fichiers du SDK Live2D gardent leurs licences et notices dans `CubismSdkForNative-5-r.5/`.
+
+**État de cette livraison :** le pont JNI, le renderer natif, le passage des données de face tracking et la configuration CMake/Gradle ont été préparés. L'APK n'a pas pu être compilé dans l'environnement de packaging car la distribution Gradle 8.14.3 n'a pas pu être téléchargée et qu'aucun Android SDK/NDK n'est installé dans cet environnement. Consultez [NATIVE_CUBISM_SETUP.md](NATIVE_CUBISM_SETUP.md) et [BUILD_STATUS.txt](BUILD_STATUS.txt) avant de compiler.
 
 ## Les deux ou trois pièges qui m'ont coûté une soirée
 
@@ -101,5 +100,5 @@ autres apps » (elle t'envoie dans les réglages système) et la permission de n
 Code sous MIT — voir [LICENSE](LICENSE). Fais-en ce que tu veux.
 
 Les trucs pas à moi gardent leur licence :
-- **Live2D Cubism SDK** — © Live2D Inc. Pas inclus, à télécharger toi-même.
+- **Live2D Cubism SDK for Native 5 R5** — © Live2D Inc. Utilisé selon les termes et notices fournis dans `CubismSdkForNative-5-r.5/`.
 - **Modèle Hiyori** — sample officiel Live2D, utilisé selon leurs conditions.

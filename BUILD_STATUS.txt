@@ -1,0 +1,26 @@
+Build status for Native Cubism 5 R5 integration
+================================================
+
+Source integration: prepared.
+Android manifest XML: parsed successfully.
+Model JSON: parsed successfully.
+Native SDK: Cubism SDK for Native 5 R5 included from the user's uploaded archive.
+CMake/Gradle: configured for Android NDK 26.3.11579264, CMake 3.22.1,
+              arm64-v8a and x86_64.
+
+Android APK: NOT BUILT / NOT VERIFIED.
+
+Build attempt:
+  ./gradlew assembleDebug --offline
+
+Result:
+  Gradle wrapper tried to download Gradle 8.14.3 but network access to
+  services.gradle.org failed with UnknownHostException. No Android SDK/NDK
+  toolchain is installed in this packaging environment either.
+
+The source package includes the Native SDK framework/core files and JNI bridge.
+Build and runtime behavior must still be verified in Android Studio on a machine
+with the required SDK/NDK and Maven/Gradle network access.
+
+Expected debug APK after successful build:
+  app/build/outputs/apk/debug/app-debug.apk

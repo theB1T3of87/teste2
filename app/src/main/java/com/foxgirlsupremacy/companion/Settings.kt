@@ -24,6 +24,10 @@ class Settings(context: Context) {
         get() = prefs.getBoolean(KEY_ANIMATIONS, true)
         set(value) = prefs.edit().putBoolean(KEY_ANIMATIONS, value).apply()
 
+    var faceTrackingEnabled: Boolean
+        get() = prefs.getBoolean(KEY_FACE_TRACKING, false)
+        set(value) = prefs.edit().putBoolean(KEY_FACE_TRACKING, value).apply()
+
     var wanderEnabled: Boolean
         get() = prefs.getBoolean(KEY_WANDER, true)
         set(value) = prefs.edit().putBoolean(KEY_WANDER, value).apply()
@@ -65,6 +69,7 @@ class Settings(context: Context) {
         const val KEY_REACTIONS = "reactions_enabled"
         const val KEY_ANIMATIONS = "animations_enabled"
         const val KEY_WANDER = "wander_enabled"
+        const val KEY_FACE_TRACKING = "face_tracking_enabled"
         const val KEY_SNOW = "snow_fox"
         const val KEY_MODEL = "model_id"
         const val KEY_POS_X = "pos_x"

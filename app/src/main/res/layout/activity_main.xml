@@ -263,6 +263,22 @@
                     android:alpha="0.7" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_face_tracking"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:minHeight="52dp"
+                    android:text="@string/switch_face_tracking"
+                    android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/switch_face_tracking_sub"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:alpha="0.7" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/switch_wander"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

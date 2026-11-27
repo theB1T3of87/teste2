@@ -36,6 +36,8 @@
     <string name="switch_reactions_sub">Elle réagit quand on la touche</string>
     <string name="switch_animations">Animations</string>
     <string name="switch_animations_sub">Respiration au repos</string>
+    <string name="switch_face_tracking">Face tracking</string>
+    <string name="switch_face_tracking_sub">La compagne suit les mouvements de ta tête et tes yeux (caméra frontale)</string>
     <string name="switch_wander">Déambulation</string>
     <string name="switch_wander_sub">Elle se balade en bas de l\'écran</string>
 

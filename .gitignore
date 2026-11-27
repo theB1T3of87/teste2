@@ -10,7 +10,9 @@
 .cxx/
 .kotlin/
 
-# Live2D Cubism SDK — propriétaire, à télécharger séparément (cf. README)
+# Live2D Cubism SDK Native — supplied separately by the project owner
+# Keep the licensed SDK out of public source control unless redistribution is permitted.
+/CubismSdkForNative-5-r.5/
 /CubismSdkForJava-5-r.5/
 
 # Modèles importés à l'exécution (ne pas versionner de modèles non redistribuables)

@@ -7,292 +7,176 @@ import android.opengl.EGLConfig
 import android.opengl.EGLContext
 import android.opengl.EGLDisplay
 import android.opengl.EGLSurface
-import android.opengl.GLES20
 import android.view.Surface
 import android.view.TextureView
 import android.view.View
-import com.live2d.sdk.cubism.framework.CubismFramework
-import com.live2d.sdk.cubism.framework.math.CubismMatrix44
-import com.live2d.sdk.cubism.framework.rendering.android.CubismShaderAndroid
 import java.util.concurrent.ConcurrentLinkedQueue
 
-private const val PREVIEW_PRIORITY = 3
+private const val FRAME_MS = 16L
+private const val MOTION_PRIORITY = 3
 
+/** TextureView/EGL host for the Live2D Native SDK renderer. */
 class Live2DRenderer(
     private val appContext: Context,
     private val modelDir: String,
     private val modelJson: String,
     private val onReady: () -> Unit = {},
 ) : CharacterRenderer {
-
-    private var view: Live2DTextureView? = null
+    private var view: NativeTextureView? = null
 
     override fun createView(context: Context): View {
-        Live2DAssets.init(context)
-
-        if (!frameworkStarted) {
-            val option = CubismFramework.Option().apply {
-                loadFileFunction = Live2DAssets.LoadFile()
-                logFunction = Live2DAssets.Logger()
-            }
-            CubismFramework.cleanUp()
-            CubismFramework.startUp(option)
-            frameworkStarted = true
-        }
-
-        return Live2DTextureView(context, modelDir, modelJson, onReady).also { view = it }
+        NativeCubismBridge.configure(appContext, modelDir, modelJson)
+        return NativeTextureView(context, onReady).also { view = it }
     }
 
     override fun setState(state: CharacterState) {
-        view?.applyState(state)
+        if (state == CharacterState.PET || state == CharacterState.EAT || state == CharacterState.TALK) {
+            view?.postNative { NativeCubismBridge.nativePlayMotion("TapBody", 0) }
+        }
     }
 
     override fun playMotion(group: String, index: Int) {
-        view?.playMotion(group, index)
+        view?.postNative { NativeCubismBridge.nativePlayMotion(group, index) }
     }
 
     override fun playExpression(name: String) {
-        view?.playExpression(name)
+        view?.postNative { NativeCubismBridge.nativeSetExpression(name) }
     }
 
-    override fun setScale(scale: Float) {}
-    override fun setAnimationsEnabled(enabled: Boolean) {}
-    override fun setFacing(facing: Int) {}
-    override fun setSnowFox(snow: Boolean) {}
-    override fun update(dtMillis: Long) {}
+    fun setFaceTrackingData(data: FaceTrackingData?) {
+        if (data == null) {
+            NativeCubismBridge.nativeSetFaceTrackingData(false, 0f, 0f, 0f, 1f, 1f, 0f, 0f, 0f)
+        } else {
+            NativeCubismBridge.nativeSetFaceTrackingData(
+                true, data.angleX, data.angleY, data.angleZ,
+                data.eyeLOpen, data.eyeROpen, data.mouthForm, data.faceX, data.faceY,
+            )
+        }
+    }
+
+    override fun setScale(scale: Float) = Unit
+    override fun setAnimationsEnabled(enabled: Boolean) = Unit
+    override fun setFacing(facing: Int) = Unit
+    override fun setSnowFox(snow: Boolean) = Unit
+    override fun update(dtMillis: Long) = Unit
 
     override fun dispose() {
         view?.stop()
         view = null
     }
 
-    private companion object {
-
-        @Volatile
-        var frameworkStarted = false
-    }
-
-    private class Live2DTextureView(
-        context: Context,
-        private val modelDir: String,
-        private val modelJson: String,
-        private val onReady: () -> Unit,
-    ) : TextureView(context), TextureView.SurfaceTextureListener {
-
-        private var renderThread: RenderThread? = null
+    private class NativeTextureView(context: Context, private val onReady: () -> Unit) : TextureView(context), TextureView.SurfaceTextureListener {
+        private var renderThread: NativeRenderThread? = null
 
         init {
             isOpaque = false
             surfaceTextureListener = this
         }
 
-        fun applyState(state: CharacterState) {
-            renderThread?.postState(state)
-        }
-
-        fun stop() {
-            renderThread?.shutdown()
-            renderThread = null
-        }
-
-        fun playMotion(group: String, index: Int) {
-            renderThread?.postCommand { it.startMotion(group, index, PREVIEW_PRIORITY) }
-        }
-
-        fun playExpression(name: String) {
-            renderThread?.postCommand { it.setExpression(name) }
-        }
+        fun postNative(action: () -> Unit) { renderThread?.post(action) }
+        fun stop() { renderThread?.shutdown(); renderThread = null }
 
         override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-            renderThread = RenderThread(context.applicationContext, surface, width, height, modelDir, modelJson, onReady).also {
-                it.start()
-            }
+            renderThread = NativeRenderThread(surface, width, height, onReady).also { it.start() }
         }
-
         override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
-            renderThread?.onSizeChanged(width, height)
+            renderThread?.resize(width, height)
         }
-
         override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
-
-            renderThread?.shutdown()
-            renderThread = null
+            stop()
             return true
         }
-
-        override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
+        override fun onSurfaceTextureUpdated(surface: SurfaceTexture) = Unit
     }
 
-    private class RenderThread(
-        private val context: Context,
-        private val surfaceTexture: SurfaceTexture,
-        startWidth: Int,
-        startHeight: Int,
-        private val modelDir: String,
-        private val modelJson: String,
+    private class NativeRenderThread(
+        private val texture: SurfaceTexture,
+        width: Int,
+        height: Int,
         private val onReady: () -> Unit,
-    ) : Thread("Live2D-GL") {
-
+    ) : Thread("Fox-Cubism-GL") {
         @Volatile private var running = true
-        @Volatile private var width = startWidth
-        @Volatile private var height = startHeight
-        @Volatile private var sizeDirty = true
-        private val pendingStates = ConcurrentLinkedQueue<CharacterState>()
-        private val pendingCommands = ConcurrentLinkedQueue<(Live2DModel) -> Unit>()
-
-        private var eglDisplay: EGLDisplay = EGL14.EGL_NO_DISPLAY
-        private var eglContext: EGLContext = EGL14.EGL_NO_CONTEXT
+        @Volatile private var targetWidth = width
+        @Volatile private var targetHeight = height
+        @Volatile private var resizePending = true
+        private val commands = ConcurrentLinkedQueue<() -> Unit>()
+        private var display: EGLDisplay = EGL14.EGL_NO_DISPLAY
+        private var context: EGLContext = EGL14.EGL_NO_CONTEXT
         private var eglSurface: EGLSurface = EGL14.EGL_NO_SURFACE
+        private var androidSurface: Surface? = null
 
-        private var model: Live2DModel? = null
-        private val projection = CubismMatrix44.create()
-
-        fun postState(state: CharacterState) = pendingStates.add(state)
-
-        fun postCommand(command: (Live2DModel) -> Unit) = pendingCommands.add(command)
-
-        fun onSizeChanged(w: Int, h: Int) {
-            width = w
-            height = h
-            sizeDirty = true
+        fun post(action: () -> Unit) { commands.add(action) }
+        fun resize(width: Int, height: Int) {
+            targetWidth = width; targetHeight = height; resizePending = true
         }
-
         fun shutdown() {
             running = false
-            try {
-                join(800)
-            } catch (_: InterruptedException) {
-            }
+            interrupt()
+            try { join(1500) } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
         }
 
         override fun run() {
-            if (!initEgl()) {
+            if (!initEgl()) { releaseEgl(); return }
+            try {
+                NativeCubismBridge.nativeOnStart()
+                NativeCubismBridge.nativeOnSurfaceCreated()
+                NativeCubismBridge.nativeOnSurfaceChanged(targetWidth, targetHeight)
+                onReady()
+                while (running) {
+                    while (true) (commands.poll() ?: break).invoke()
+                    if (resizePending) {
+                        NativeCubismBridge.nativeOnSurfaceChanged(targetWidth, targetHeight)
+                        resizePending = false
+                    }
+                    NativeCubismBridge.nativeOnDrawFrame()
+                    EGL14.eglSwapBuffers(display, eglSurface)
+                    try { sleep(FRAME_MS) } catch (_: InterruptedException) { if (!running) break }
+                }
+            } catch (_: Throwable) {
+                // Keep renderer failures isolated from the foreground overlay service.
+            } finally {
+                runCatching { NativeCubismBridge.nativeOnStop() }
+                runCatching { NativeCubismBridge.nativeOnDestroy() }
                 releaseEgl()
-                return
             }
-
-            if (!CubismFramework.isInitialized()) {
-                CubismFramework.initialize()
-            }
-
-            CubismShaderAndroid.deleteInstance()
-
-            val tm = Live2DTextureManager(context)
-            model = Live2DModel(tm).apply { loadAssets(modelDir, modelJson, width, height) }
-            onReady()
-
-            while (running) {
-                drainStates()
-                if (sizeDirty) {
-                    GLES20.glViewport(0, 0, width, height)
-                    model?.setRenderTargetSize(width, height)
-                    sizeDirty = false
-                }
-                drawFrame()
-                EGL14.eglSwapBuffers(eglDisplay, eglSurface)
-                try {
-                    sleep(FRAME_MS)
-                } catch (_: InterruptedException) {
-                }
-            }
-
-            model = null
-            releaseEgl()
-        }
-
-        private fun drainStates() {
-            val m = model ?: return
-            while (true) {
-                val state = pendingStates.poll() ?: break
-                when (state) {
-                    CharacterState.PET -> m.setExpressionFrom(arrayOf("heart_eyes", "blush", "red", "shou", "tang"))
-                    CharacterState.EAT -> m.setExpressionFrom(arrayOf("blush", "red", "heart_eyes", "shou"))
-                    CharacterState.TALK -> m.setExpressionFrom(arrayOf("tail", "shou", "tang", "heart_eyes"))
-                    else -> {}
-                }
-            }
-            while (true) {
-                val command = pendingCommands.poll() ?: break
-                command(m)
-            }
-        }
-
-        private fun drawFrame() {
-            val m = model ?: return
-            Live2DAssets.updateTime()
-            GLES20.glClearColor(0f, 0f, 0f, 0f)
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
-            if (width == 0 || height == 0) return
-
-            projection.loadIdentity()
-            val aspectRatio = width.toFloat() / height.toFloat()
-            val displayRatio = height.toFloat() / width.toFloat()
-            if (m.canvasRatio() < displayRatio) {
-                m.fitWidth()
-                projection.scale(1.0f, aspectRatio)
-            } else {
-                m.fitHeight()
-                projection.scale(1.0f / aspectRatio, 1.0f)
-            }
-            m.update()
-            m.draw(projection)
         }
 
         private fun initEgl(): Boolean {
-            eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
-            if (eglDisplay == EGL14.EGL_NO_DISPLAY) return false
-            val version = IntArray(2)
-            if (!EGL14.eglInitialize(eglDisplay, version, 0, version, 1)) return false
-
-            val configAttribs = intArrayOf(
+            display = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
+            if (display == EGL14.EGL_NO_DISPLAY) return false
+            val versions = IntArray(2)
+            if (!EGL14.eglInitialize(display, versions, 0, versions, 1)) return false
+            val attributes = intArrayOf(
                 EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
-                EGL14.EGL_RED_SIZE, 8,
-                EGL14.EGL_GREEN_SIZE, 8,
-                EGL14.EGL_BLUE_SIZE, 8,
-                EGL14.EGL_ALPHA_SIZE, 8,
-                EGL14.EGL_DEPTH_SIZE, 16,
+                EGL14.EGL_SURFACE_TYPE, EGL14.EGL_WINDOW_BIT,
+                EGL14.EGL_RED_SIZE, 8, EGL14.EGL_GREEN_SIZE, 8,
+                EGL14.EGL_BLUE_SIZE, 8, EGL14.EGL_ALPHA_SIZE, 8,
                 EGL14.EGL_NONE,
             )
             val configs = arrayOfNulls<EGLConfig>(1)
-            val numConfig = IntArray(1)
-            if (!EGL14.eglChooseConfig(eglDisplay, configAttribs, 0, configs, 0, 1, numConfig, 0) ||
-                numConfig[0] == 0
-            ) {
-                return false
-            }
-            val config = configs[0] ?: return false
-
-            val contextAttribs = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL14.EGL_NONE)
-            eglContext = EGL14.eglCreateContext(eglDisplay, config, EGL14.EGL_NO_CONTEXT, contextAttribs, 0)
-            if (eglContext == EGL14.EGL_NO_CONTEXT) return false
-
-            val surface = Surface(surfaceTexture)
-            eglSurface = EGL14.eglCreateWindowSurface(eglDisplay, config, surface, intArrayOf(EGL14.EGL_NONE), 0)
-            if (eglSurface == EGL14.EGL_NO_SURFACE) return false
-
-            if (!EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)) return false
-
-            GLES20.glEnable(GLES20.GL_BLEND)
-            GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
-            return true
+            val count = IntArray(1)
+            if (!EGL14.eglChooseConfig(display, attributes, 0, configs, 0, 1, count, 0) || count[0] == 0) return false
+            val contextAttributes = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL14.EGL_NONE)
+            context = EGL14.eglCreateContext(display, configs[0], EGL14.EGL_NO_CONTEXT, contextAttributes, 0)
+            val surfaceAttributes = intArrayOf(EGL14.EGL_NONE)
+            androidSurface = Surface(texture)
+            eglSurface = EGL14.eglCreateWindowSurface(display, configs[0], androidSurface, surfaceAttributes, 0)
+            if (context == EGL14.EGL_NO_CONTEXT || eglSurface == EGL14.EGL_NO_SURFACE) return false
+            return EGL14.eglMakeCurrent(display, eglSurface, eglSurface, context)
         }
 
         private fun releaseEgl() {
-            if (eglDisplay != EGL14.EGL_NO_DISPLAY) {
-                EGL14.eglMakeCurrent(
-                    eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT,
-                )
-                if (eglSurface != EGL14.EGL_NO_SURFACE) EGL14.eglDestroySurface(eglDisplay, eglSurface)
-                if (eglContext != EGL14.EGL_NO_CONTEXT) EGL14.eglDestroyContext(eglDisplay, eglContext)
-
+            if (display != EGL14.EGL_NO_DISPLAY) {
+                EGL14.eglMakeCurrent(display, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)
+                if (eglSurface != EGL14.EGL_NO_SURFACE) EGL14.eglDestroySurface(display, eglSurface)
+                if (context != EGL14.EGL_NO_CONTEXT) EGL14.eglDestroyContext(display, context)
+                EGL14.eglTerminate(display)
             }
-            eglDisplay = EGL14.EGL_NO_DISPLAY
-            eglContext = EGL14.EGL_NO_CONTEXT
+            display = EGL14.EGL_NO_DISPLAY
+            context = EGL14.EGL_NO_CONTEXT
             eglSurface = EGL14.EGL_NO_SURFACE
-        }
-
-        companion object {
-            private const val FRAME_MS = 16L
+            androidSurface?.release()
+            androidSurface = null
         }
     }
 }

@@ -37,10 +37,11 @@ au réveil.
 
 ## Rendu du personnage
 
-Le rendu passe par Live2D (Cubism SDK for Java) : Core AAR + Framework comme
-module Gradle `:cubismFramework`, toolchain JDK 17 provisionnée via foojay. Le
-rendu se fait dans une `TextureView` avec un contexte EGL et une boucle de rendu
-maison (`Live2DRenderer`), derrière l'interface `CharacterRenderer`.
+Le rendu passe par le Cubism SDK for Native 5 R5 : Core statique Android +
+Framework C++ compilés par CMake/NDK, exposés à Kotlin par JNI. Le rendu se fait
+dans une `TextureView` avec un contexte EGL et une boucle de rendu (`Live2DRenderer`),
+derrière l'interface `CharacterRenderer`. Le pont `NativeCubismBridge` fournit
+les assets et les fichiers importés au SDK natif.
 
 **TextureView plutôt que GLSurfaceView.** Une `SurfaceView` en overlay bloque le
 thread principal plusieurs secondes à chaque destruction/déplacement de surface
@@ -75,8 +76,8 @@ La roue propose aussi éteindre, agrandir et réduire.
 `Live2DModels` découvre les modèles dans les assets (`assets/live2d/<id>/`) et
 dans le stockage interne pour les modèles importés (`filesDir/live2d/<id>/`, scan
 récursif). Un dossier est un modèle valide s'il contient un `*.model3.json`.
-`Live2DAssets` et `Live2DTextureManager` chargent indifféremment depuis un asset
-(chemin relatif) ou un chemin absolu (modèle importé).
+`NativeCubismBridge` charge indifféremment depuis un asset (chemin relatif) ou
+un chemin absolu (modèle importé), via les callbacks JNI du SDK natif.
 
 L'import passe par le Storage Access Framework (`OpenDocumentTree`) puis une copie
 récursive en tâche de fond.
@@ -91,11 +92,10 @@ persistée par modèle (`anim_map_<id>`) et rechargée à la volée quand elle c
 
 ## Détail d'implémentation à connaître
 
-`CubismFramework.startUp` / `cleanUp` ne doivent être appelés qu'une seule fois
-par process. Les rappeler à chaque reconstruction de modèle remet `SHADER_COUNT`
-à zéro et fait planter `generateShaders` au modèle suivant. Une garde statique
-assure le `startUp` unique ; au changement de modèle on ne fait que réinitialiser
-les shaders pour le nouveau contexte GL.
+Le cycle de vie du Framework natif est possédé par le thread EGL : l'initialisation
+se fait à la création du contexte GL et la libération à l'arrêt du renderer. Les
+callbacks JNI de motion/expression sont exécutés sur le même thread de rendu ; les
+mesures du face tracking sont partagées avec un mutex côté C++.
 
 ## Personnalité
 
