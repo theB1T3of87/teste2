@@ -322,7 +322,7 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
             Settings.KEY_SNOW -> renderer.setSnowFox(settings.snowFox)
             Settings.KEY_WANDER -> controller.wanderEnabled = settings.wanderEnabled
             Settings.KEY_FACE_TRACKING -> { startForegroundNotification(); updateFaceTracking() }
-            Settings.KEY_MODEL -> rebuildOverlay()
+            Settings.KEY_MODEL -> rebuildOverlay()\n            Settings.KEY_MENU_COLOR -> radialMenuView?.let { dismissRadialMenu(); showRadialMenu() }
         }
 
         if (key?.startsWith("anim_map_") == true) {
@@ -385,7 +385,7 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
             RadialMenuView.Item(RadialAction.SMALLER, getString(R.string.action_smaller), R.drawable.ic_smaller),
             RadialMenuView.Item(RadialAction.OFF, getString(R.string.action_off), R.drawable.ic_off),
         )
-        val view = RadialMenuView(this, cx, cy, items)
+        val menuColor = runCatching { android.graphics.Color.parseColor(settings.menuColor) }.getOrDefault(android.graphics.Color.parseColor("#FF7043"))\n        val view = RadialMenuView(this, cx, cy, items, menuColor)
 
         val menuParams = overlayParams(
             WindowManager.LayoutParams.MATCH_PARENT,
