@@ -33,8 +33,8 @@ android {
 
     sourceSets.getByName("main").assets.srcDirs(
         "src/main/assets",
-        "../CubismSdkForNative-5-r.5/Samples/OpenGL/Shaders/StandardES",
-        "../CubismSdkForNative-5-r.5/Framework/src/Rendering/OpenGL/Shaders/StandardES",
+        "../FoxGirlSupremacy/CubismSdkForNative-5-r.5/Samples/OpenGL/Shaders/StandardES",
+        "../FoxGirlSupremacy/CubismSdkForNative-5-r.5/Framework/src/Rendering/OpenGL/Shaders/StandardES",
     )
 
     compileOptions {
