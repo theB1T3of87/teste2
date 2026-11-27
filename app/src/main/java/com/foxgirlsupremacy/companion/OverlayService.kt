@@ -42,7 +42,6 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
     private lateinit var controller: CompanionController
     private var overlayView: View? = null
     private var snackView: View? = null
-    private var bubbleView: View? = null
     private var radialMenuView: RadialMenuView? = null
     private var loadingView: View? = null
     private var petModeActive = false
@@ -91,7 +90,6 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
 
         lastTick = SystemClock.uptimeMillis()
         handler.post(tick)
-        handler.postDelayed(randomTalk, Random.nextLong(TALK_MIN_MS, TALK_MAX_MS))
         handler.postDelayed(idleAnimTick, Random.nextLong(IDLE_ANIM_MIN_MS, IDLE_ANIM_MAX_MS))
     }
 
@@ -130,15 +128,6 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
             if (r < 0) return key
         }
         return anims.last().first
-    }
-
-    private val randomTalk = object : Runnable {
-        override fun run() {
-            if (!userInteracting && bubbleView == null && overlayView != null) {
-                showBubble()
-            }
-            handler.postDelayed(this, Random.nextLong(TALK_MIN_MS, TALK_MAX_MS))
-        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -283,7 +272,6 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
         val keepX = params.x
         val keepY = params.y
         removeSnack()
-        removeBubble()
         hideLoading()
         faceTrackingController?.stop()
         faceTrackingController = null
@@ -378,43 +366,6 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
         snackView = null
     }
 
-    private fun showBubble() {
-        removeBubble()
-        val lines = resources.getStringArray(R.array.chat_lines)
-        val text = lines[Random.nextInt(lines.size)]
-
-        playForAction("TALK") { renderer.setState(CharacterState.TALK) }
-
-        val bubble = TextView(this).apply {
-            setText(text)
-            setBackgroundResource(R.drawable.bubble_bg)
-            setTextColor(0xFF211A17.toInt())
-            textSize = 14f
-        }
-        val margin = (8 * resources.displayMetrics.density).toInt()
-        val bubbleHeight = (44 * resources.displayMetrics.density).toInt()
-        val bubbleParams = overlayParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            touchable = false,
-        ).apply {
-            x = params.x
-            y = (params.y - bubbleHeight - margin).coerceAtLeast(0)
-        }
-        windowManager.addView(bubble, bubbleParams)
-        bubbleView = bubble
-
-        handler.postDelayed({
-            removeBubble()
-            renderer.setState(CharacterState.IDLE)
-        }, BUBBLE_MS)
-    }
-
-    private fun removeBubble() {
-        bubbleView?.let { runCatching { windowManager.removeView(it) } }
-        bubbleView = null
-    }
-
     private fun showRadialMenu() {
         dismissRadialMenu()
 
@@ -430,7 +381,6 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
         val items = listOf(
             firstItem,
             RadialMenuView.Item(RadialAction.FEED, getString(R.string.action_feed), R.drawable.ic_snack),
-            RadialMenuView.Item(RadialAction.TALK, getString(R.string.action_talk), R.drawable.ic_talk),
             RadialMenuView.Item(RadialAction.BIGGER, getString(R.string.action_bigger), R.drawable.ic_bigger),
             RadialMenuView.Item(RadialAction.SMALLER, getString(R.string.action_smaller), R.drawable.ic_smaller),
             RadialMenuView.Item(RadialAction.OFF, getString(R.string.action_off), R.drawable.ic_off),
@@ -460,7 +410,6 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
             RadialAction.PET -> enterPetMode()
             RadialAction.NORMAL -> exitPetMode()
             RadialAction.FEED -> dropSnack()
-            RadialAction.TALK -> showBubble()
             RadialAction.BIGGER -> stepScale(SCALE_STEP)
             RadialAction.SMALLER -> stepScale(-SCALE_STEP)
             RadialAction.OFF -> settings.companionEnabled = false
@@ -654,7 +603,6 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
         faceTrackingController = null
         settings.savePosition(params.x, params.y)
         removeSnack()
-        removeBubble()
         dismissRadialMenu()
         hideLoading()
         renderer.dispose()
@@ -673,12 +621,9 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
         private const val LONG_PRESS_MS = 500L
         private const val PET_MS = 400L
         private const val EAT_MS = 1600L
-        private const val BUBBLE_MS = 2500L
         private const val PET_SCREEN_FRACTION = 0.7f
         private const val LOADING_TIMEOUT_MS = 8000L
         private const val SCALE_STEP = 0.5f
-        private const val TALK_MIN_MS = 25_000L
-        private const val TALK_MAX_MS = 70_000L
         private const val IDLE_ANIM_MIN_MS = 10_000L
         private const val IDLE_ANIM_MAX_MS = 22_000L
 
