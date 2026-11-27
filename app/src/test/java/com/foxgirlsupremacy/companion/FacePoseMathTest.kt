@@ -30,7 +30,10 @@ class FacePoseMathTest {
     }
 
     @Test fun neutralMatrixProducesNeutralPose() {
-        assertEquals(Triple(0f, 0f, 0f), FacePoseMath.fromColumnMajor(yxz(0f, 0f, 0f)))
+        val result = FacePoseMath.fromColumnMajor(yxz(0f, 0f, 0f))
+        assertEquals(0f, result.first, 0.001f)
+        assertEquals(0f, result.second, 0.001f)
+        assertEquals(0f, result.third, 0.001f)
     }
 
     @Test fun horizontalTurnMapsToCubismAngleX() {
