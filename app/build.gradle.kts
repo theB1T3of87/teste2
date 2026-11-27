@@ -59,4 +59,5 @@ dependencies {
     implementation("androidx.camera:camera-core:1.4.2")
     implementation("androidx.lifecycle:lifecycle-service:2.8.7")
     implementation("com.google.mediapipe:tasks-vision:1.2.2")
+    testImplementation("junit:junit:4.13.2")
 }
