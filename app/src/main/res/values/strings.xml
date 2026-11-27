@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Fox Girl Supremacy</string>
+    <string name="app_name">Live2D Vtuber Streaming</string>
     <string name="notif_channel_name">VTuber</string>
     <string name="notif_title">Your VTuber is here</string>
     <string name="notif_text">They are hanging out above your apps.</string>
