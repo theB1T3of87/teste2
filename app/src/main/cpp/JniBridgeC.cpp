@@ -208,6 +208,13 @@ extern "C"
         g_faceTracking.angleX = angleX; g_faceTracking.angleY = angleY; g_faceTracking.angleZ = angleZ;
         g_faceTracking.eyeLOpen = eyeLOpen; g_faceTracking.eyeROpen = eyeROpen; g_faceTracking.mouthForm = mouthForm; g_faceTracking.mouthOpen = mouthOpen;
         g_faceTracking.gazeX = gazeX; g_faceTracking.gazeY = gazeY;
+        static unsigned int diagnosticFrame = 0;
+        if ((++diagnosticFrame % 30) == 1)
+        {
+            LAppPal::PrintLogLn("[FaceTracking JNI] enabled=%d angle=(%.2f,%.2f,%.2f) eyes=(%.2f,%.2f) mouth=(%.2f,%.2f) gaze=(%.2f,%.2f)",
+                g_faceTracking.enabled ? 1 : 0, angleX, angleY, angleZ,
+                eyeLOpen, eyeROpen, mouthForm, mouthOpen, gazeX, gazeY);
+        }
     }
 
     JNIEXPORT void JNICALL
