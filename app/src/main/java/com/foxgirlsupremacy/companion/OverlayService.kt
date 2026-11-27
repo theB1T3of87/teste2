@@ -142,6 +142,9 @@ class OverlayService : LifecycleService(), SharedPreferences.OnSharedPreferenceC
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // LifecycleService must receive this call so its Lifecycle reaches STARTED.
+        // CameraX bindToLifecycle(this, ...) will otherwise never activate the camera.
+        super.onStartCommand(intent, flags, startId)
         when (intent?.action) {
             ACTION_SNACK -> dropSnack()
             ACTION_PLAY_MOTION -> renderer.playMotion(
