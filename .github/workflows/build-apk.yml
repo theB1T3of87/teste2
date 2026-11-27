@@ -25,10 +25,15 @@ jobs:
         with:
           packages: 'platform-tools'
 
+      - name: Run face tracking unit tests
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:testDebugUnitTest
+
       - name: Build APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
