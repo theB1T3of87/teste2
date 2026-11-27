@@ -33,7 +33,10 @@ class Settings(context: Context) {
         set(value) = prefs.edit().putBoolean(KEY_WANDER, value).apply()
 
     var menuColor: String
-        get() = prefs.getString(KEY_MENU_COLOR, "#FF9800") ?: "#FF9800"
+        get() {
+            val stored = prefs.getString(KEY_MENU_COLOR, "#FF9800") ?: "#FF9800"
+            return if (stored.equals("#FF7043", ignoreCase = true)) "#FF9800" else stored
+        }
         set(value) = prefs.edit().putString(KEY_MENU_COLOR, value).apply()
 
     var modelId: String
