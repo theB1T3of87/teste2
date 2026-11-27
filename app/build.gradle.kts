@@ -31,6 +31,8 @@ android {
         cmake { path = file("CMakeLists.txt"); version = "3.22.1" }
     }
 
+    androidResources { noCompress += listOf("task") }
+
     sourceSets.getByName("main").assets.srcDirs(
         "src/main/assets",
         "../FoxGirlSupremacy/CubismSdkForNative-5-r.5/Samples/OpenGL/Shaders/StandardES",
@@ -44,6 +46,9 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 
+extra["ASSET_DIR"] = "$projectDir/src/main/assets"
+apply(from = "download_tasks.gradle.kts")
+
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
@@ -53,5 +58,5 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.4.2")
     implementation("androidx.camera:camera-core:1.4.2")
     implementation("androidx.lifecycle:lifecycle-service:2.8.7")
-    implementation("com.google.mlkit:face-detection:16.1.7")
+    implementation("com.google.mediapipe:tasks-vision:1.2.2")
 }
