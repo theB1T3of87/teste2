@@ -23,8 +23,6 @@ import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.atan2
-import kotlin.math.sqrt
 
 /**
  * Real-time Face Landmarker adapter.
@@ -257,7 +255,7 @@ class FaceTrackingController(
         fun score(name: String): Float = (scores[name] ?: 0f).coerceIn(0f, 1f)
 
         val matrix = facialTransformationMatrixes().orElse(emptyList()).firstOrNull()
-        val (angleX, angleY, angleZ) = matrix?.toHeadAngles() ?: Triple(0f, 0f, 0f)
+        val (angleX, angleY, angleZ) = matrix?.let(FacePoseMath::fromColumnMajor) ?: Triple(0f, 0f, 0f)
 
         val blinkLeft = score("eyeBlinkLeft")
         val blinkRight = score("eyeBlinkRight")
@@ -295,30 +293,6 @@ class FaceTrackingController(
         )
     }
 
-    /**
-     * MediaPipe returns a flat column-major 4x4 facial transform matrix.
-     * Extract Y-X-Z Euler angles from its upper-left 3x3 rotation matrix.
-     */
-    private fun FloatArray.toHeadAngles(): Triple<Float, Float, Float> {
-        if (size < 16) return Triple(0f, 0f, 0f)
-
-        val r00 = this[0]
-        val r10 = this[1]
-        val r20 = this[2]
-        val r21 = this[6]
-        val r22 = this[10]
-        val yaw = atan2(-r20, sqrt(r00 * r00 + r10 * r10))
-        val pitch = atan2(r21, r22)
-        val roll = atan2(r10, r00)
-        val radiansToDegrees = (180f / Math.PI.toFloat())
-
-        // Negative horizontal/vertical signs align camera movement with Cubism's
-        // standard screen-space directions; gains make small turns perceptible.
-        val angleX = (-yaw * radiansToDegrees * 1.35f).coerceIn(-30f, 30f)
-        val angleY = (-pitch * radiansToDegrees * 1.30f).coerceIn(-25f, 25f)
-        val angleZ = (-roll * radiansToDegrees * 1.15f).coerceIn(-30f, 30f)
-        return Triple(angleX, angleY, angleZ)
-    }
 
     data class FaceTrackingData(
         val angleX: Float,
