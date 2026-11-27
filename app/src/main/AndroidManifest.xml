@@ -3,7 +3,7 @@
 
     <!-- Dessiner par-dessus les autres apps -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <!-- Face tracking local via CameraX/ML Kit -->
+    <!-- Local face tracking with CameraX and MediaPipe Face Landmarker -->
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Foreground service pour survivre au changement d'app -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -17,7 +17,7 @@
         android:icon="@drawable/ic_companion"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.FoxGirlSupremacy">
+        android:theme="@style/Theme.VTuber">
 
         <activity
             android:name=".MainActivity"
@@ -34,7 +34,7 @@
             android:foregroundServiceType="specialUse|camera">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="overlay_companion" />
+                android:value="overlay_vtuber" />
         </service>
 
     </application>
